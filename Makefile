@@ -1,12 +1,14 @@
 APP_NAME := dgraph-viewer
 PID_FILE := .pid
+LOG_FILE := /tmp/$(APP_NAME).log
 
-.PHONY: start stop
+.PHONY: start stop restart
 
 start:
 	@go build -o $(APP_NAME) .
-	@./$(APP_NAME) & echo $$! > $(PID_FILE)
+	@./$(APP_NAME) > $(LOG_FILE) 2>&1 & echo $$! > $(PID_FILE)
 	@echo "Started $(APP_NAME) (pid $$(cat $(PID_FILE)))"
+	@echo "Logging to $(LOG_FILE)"
 
 stop:
 	@if [ -f $(PID_FILE) ]; then \
@@ -15,3 +17,5 @@ stop:
 	else \
 		echo "No PID file found"; \
 	fi
+
+restart: stop start
