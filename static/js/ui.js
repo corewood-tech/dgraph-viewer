@@ -76,6 +76,13 @@ function createModal(d) {
 }
 
 function showNodeInfo(d) {
+  // If a modal for this node already exists, reuse it
+  var existing = document.querySelector('.node-modal[data-uid="' + d.uid + '"]');
+  if (existing) {
+    if (existing.classList.contains('collapsed')) existing.classList.remove('collapsed');
+    existing.style.zIndex = ++_modalZCounter;
+    return;
+  }
   // If there's an unpinned modal, replace it
   if (_activeModal && _activeModal.parentNode) {
     _activeModal.remove();
@@ -83,6 +90,8 @@ function showNodeInfo(d) {
   _activeModal = createModal(d);
   updateModalConnections();
 }
+
+var _modalZCounter = 200;
 
 function togglePin(modalId) {
   var el = document.getElementById(modalId);
@@ -130,6 +139,7 @@ function makeDraggable(el) {
   header.addEventListener('mousedown', function(e) {
     if (e.target.closest('.modal-btn') || e.target.closest('.modal-flyto')) return; // don't drag from buttons or fly-to link
     e.preventDefault();
+    el.style.zIndex = ++_modalZCounter;
     var rect = el.getBoundingClientRect();
     ox = e.clientX; oy = e.clientY;
     sx = rect.left; sy = rect.top;
@@ -180,23 +190,44 @@ function updateModalConnections() {
   var uids = Object.keys(modalMap);
   if (uids.length < 2) return;
 
-  // Find relationships between open modals
+  // Collect all edges between open modals, grouped by modal pair
+  var pairEdges = {};
   var drawn = new Set();
   graphLinks.forEach(function(l) {
     var sid = (typeof l.source === 'object') ? l.source.uid : l.source;
     var tid = (typeof l.target === 'object') ? l.target.uid : l.target;
     if (!modalMap[sid] || !modalMap[tid]) return;
-    var key = sid + '|' + tid + '|' + l.predicate;
-    if (drawn.has(key)) return;
-    drawn.add(key);
+    var dedupKey = sid + '|' + tid + '|' + l.predicate;
+    if (drawn.has(dedupKey)) return;
+    drawn.add(dedupKey);
+    var pairKey = [sid, tid].sort().join('|');
+    if (!pairEdges[pairKey]) pairEdges[pairKey] = [];
+    pairEdges[pairKey].push({sid: sid, tid: tid, predicate: l.predicate});
+  });
 
-    var r1 = modalMap[sid].getBoundingClientRect();
-    var r2 = modalMap[tid].getBoundingClientRect();
-    // Connect from edge of source to edge of target
+  // Draw each edge with offset when multiple edges share a pair
+  Object.keys(pairEdges).forEach(function(pairKey) {
+    var edges = pairEdges[pairKey];
+    var count = edges.length;
+    edges.forEach(function(edge, idx) {
+    var r1 = modalMap[edge.sid].getBoundingClientRect();
+    var r2 = modalMap[edge.tid].getBoundingClientRect();
     var cx1 = r1.left + r1.width / 2, cy1 = r1.top + r1.height / 2;
     var cx2 = r2.left + r2.width / 2, cy2 = r2.top + r2.height / 2;
-    var p1 = clipToRect(cx1, cy1, cx2, cy2, r1);
-    var p2 = clipToRect(cx2, cy2, cx1, cy1, r2);
+
+    // Offset perpendicular to the line when multiple edges between same pair
+    var offX = 0, offY = 0;
+    if (count > 1) {
+      var ldx = cx2 - cx1, ldy = cy2 - cy1;
+      var len = Math.sqrt(ldx * ldx + ldy * ldy) || 1;
+      var nx = -ldy / len, ny = ldx / len;
+      var spacing = 16;
+      var shift = (idx - (count - 1) / 2) * spacing;
+      offX = nx * shift; offY = ny * shift;
+    }
+
+    var p1 = clipToRect(cx1 + offX, cy1 + offY, cx2 + offX, cy2 + offY, r1);
+    var p2 = clipToRect(cx2 + offX, cy2 + offY, cx1 + offX, cy1 + offY, r2);
     var x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
 
     var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -211,12 +242,11 @@ function updateModalConnections() {
     var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
     text.setAttribute('x', mx); text.setAttribute('y', my - 6);
     text.setAttribute('text-anchor', 'middle');
-    // Background pill
-    var bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    text.textContent = l.predicate;
+    text.textContent = edge.predicate;
     g.appendChild(text);
 
     svg.appendChild(g);
+    });
   });
 }
 
@@ -408,6 +438,7 @@ function initGraph() {
     if (controls.wasDragging) return;
     doRaycast();
     if (hoveredNode) {
+      if (_algoNodeSelectInput) { algoFillNodeSelect(hoveredNode.uid); return; }
       selectedNode = hoveredNode; activeNode = hoveredNode; showNodeInfo(hoveredNode);
       handleFocusClick(hoveredNode);
     } else {
@@ -451,6 +482,7 @@ function switchMode() {
     init2D();
     if (graphNodes.size > 0) render2D();
   }
+  if (highlightQuery) applyHighlightQuery();
 }
 
 // ── Depth stepper ──────────────────────────────────────────────────

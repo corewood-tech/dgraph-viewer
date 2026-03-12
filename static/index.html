@@ -211,11 +211,11 @@ body {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   z-index: 199; pointer-events: none;
 }
-#modal-connections line { stroke: var(--morpho-500); stroke-width: 1.5; stroke-dasharray: 6 4; opacity: 0.5; }
+#modal-connections line { stroke: var(--morpho-400); stroke-width: 1.5; stroke-dasharray: 6 4; opacity: 0.8; }
 #modal-connections line:hover { opacity: 1; stroke-width: 2.5; }
 #modal-connections text {
-  fill: var(--cream-200); font-family: 'HK Grotesk Pro', system-ui, sans-serif;
-  font-size: 11px; font-weight: 500; opacity: 0.7;
+  fill: var(--cream-100); font-family: 'HK Grotesk Pro', system-ui, sans-serif;
+  font-size: 11px; font-weight: 500; opacity: 0.9;
   pointer-events: none;
 }
 #modal-connections g:hover text { opacity: 1; }
@@ -332,6 +332,82 @@ body {
 .node.dimmed text { opacity: 0.08; }
 .link.dimmed { stroke-opacity: 0.03; stroke-width: 0.5px !important; }
 .link.glow { filter: drop-shadow(0 0 4px rgba(42,149,200,0.7)); stroke-opacity: 0.9; }
+/* ─── Algorithm panel ─── */
+#algo-panel {
+  border-bottom: 1px solid rgba(250,247,240,0.06);
+  font-size: 12px;
+}
+#algo-panel .algo-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 16px; border-bottom: 1px solid rgba(250,247,240,0.06);
+  position: sticky; top: 0; background: var(--forest-800); z-index: 1; cursor: pointer; user-select: none;
+}
+#algo-panel .algo-header h3 { color: var(--morpho-300); font-size: 13px; font-weight: 700; margin: 0; }
+#algo-panel .algo-header svg { width: 14px; height: 14px; stroke: var(--cream-600); stroke-width: 2; fill: none; transition: transform 0.2s; }
+#algo-panel.collapsed .algo-header svg { transform: rotate(180deg); }
+#algo-panel .algo-body { padding: 10px 16px; }
+#algo-panel.collapsed .algo-body { display: none; }
+.algo-row { display: flex; gap: 6px; margin-bottom: 8px; }
+.algo-row select, .algo-row input[type="number"] {
+  flex: 1; background: var(--forest-900); color: var(--cream-100);
+  border: 1px solid rgba(250,247,240,0.08); border-radius: 6px;
+  padding: 6px 8px; font-family: inherit; font-size: 12px;
+}
+.algo-row select:focus, .algo-row input:focus { outline: none; border-color: var(--morpho-400); }
+.algo-param-row { margin-bottom: 6px; }
+.algo-param-label { display: block; font-size: 11px; color: var(--cream-600); margin-bottom: 2px; font-weight: 500; }
+.algo-param-input {
+  width: 100%; background: var(--forest-900); color: var(--cream-100);
+  border: 1px solid rgba(250,247,240,0.08); border-radius: 6px;
+  padding: 6px 8px; font-family: inherit; font-size: 12px;
+}
+.algo-param-input:focus { outline: none; border-color: var(--morpho-400); }
+.algo-param-checkbox { accent-color: var(--forest-400); cursor: pointer; }
+.algo-node-input::placeholder { color: var(--cream-700); }
+.algo-node-input:focus { border-color: var(--morpho-400); box-shadow: 0 0 0 2px rgba(42,149,200,0.15); }
+.algo-node-multi-wrap { display: flex; flex-direction: column; gap: 4px; }
+.algo-chip-box { display: flex; flex-wrap: wrap; gap: 4px; min-height: 0; }
+.algo-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--forest-600); color: var(--cream-200);
+  border-radius: 4px; padding: 2px 6px; font-size: 11px;
+}
+.algo-chip-x { cursor: pointer; color: var(--cream-500); font-weight: bold; margin-left: 2px; }
+.algo-chip-x:hover { color: var(--dart-400); }
+.algo-type-select { display: flex; flex-wrap: wrap; gap: 6px; }
+.algo-type-opt { font-size: 11px; color: var(--cream-500); cursor: pointer; display: flex; align-items: center; gap: 3px; }
+.algo-type-opt input { accent-color: var(--forest-400); }
+.algo-btn-row { display: flex; gap: 6px; margin-top: 10px; }
+.algo-btn-row .btn { flex: 1; }
+#algo-result {
+  margin-top: 8px; font-size: 11px; color: var(--cream-500);
+  max-height: 200px; overflow-y: auto;
+}
+#algo-result strong { color: var(--morpho-300); display: block; margin-bottom: 4px; }
+.algo-top-list { margin-top: 4px; }
+.algo-top-item { padding: 2px 0; border-bottom: 1px solid rgba(250,247,240,0.04); display: flex; align-items: center; gap: 6px; }
+.algo-score { color: var(--cream-600); margin-left: auto; font-family: monospace; font-size: 10px; }
+.algo-community-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; display: inline-block; }
+.algo-community-group { border-bottom: 1px solid rgba(250,247,240,0.04); }
+.algo-community-header { cursor: pointer; user-select: none; }
+.algo-community-header:hover { color: var(--morpho-400); }
+.algo-community-toggle { display: inline-flex; align-items: center; margin-right: 2px; }
+.algo-community-toggle svg { transition: transform 0.15s; }
+.algo-community-members { padding-left: 16px; }
+.algo-community-member { font-size: 10px; }
+.algo-node-link { color: var(--morpho-400); cursor: pointer; text-decoration: underline; }
+.algo-node-link:hover { color: var(--morpho-300); }
+.algo-load-more {
+  padding: 4px 0; text-align: center; color: var(--morpho-500);
+  cursor: pointer; font-size: 10px; font-weight: 500;
+}
+.algo-load-more:hover { color: var(--morpho-300); }
+
+/* ─── 2D algo highlight classes ─── */
+.node.algo-dimmed .node-shape { opacity: 0.12; }
+.node.algo-dimmed text { opacity: 0 !important; }
+.node.algo-highlight .node-shape { filter: drop-shadow(0 0 4px rgba(42,149,200,0.5)); }
+
 .node.active .node-shape {
   filter: drop-shadow(0 0 10px rgba(42,149,200,0.95)) drop-shadow(0 0 20px rgba(42,149,200,0.5)) brightness(1.8);
   animation: throb2d 0.8s ease-in-out infinite alternate;
@@ -386,6 +462,24 @@ body {
       </div>
     </div>
     <div id="status">Ready</div>
+    <div id="algo-panel" class="collapsed">
+      <div class="algo-header" onclick="this.parentElement.classList.toggle('collapsed')">
+        <h3>Query Builder</h3>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+      <div class="algo-body">
+        <div class="algo-row">
+          <select id="algo-category"></select>
+          <select id="algo-select"></select>
+        </div>
+        <div id="algo-params"></div>
+        <div class="algo-btn-row">
+          <button class="btn btn-primary" onclick="runAlgorithm()"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>Run</button>
+          <button class="btn" onclick="clearHighlightQuery()"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>Clear</button>
+        </div>
+        <div id="algo-result"></div>
+      </div>
+    </div>
     <div id="schema-panel"></div>
   </div>
   <div id="graph-container">
@@ -422,7 +516,7 @@ body {
     </div>
   </div>
 </div>
-<svg id="modal-connections"><defs><marker id="conn-arrow" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,3 L0,6" fill="var(--morpho-500)"/></marker></defs></svg>
+<svg id="modal-connections"><defs><marker id="conn-arrow" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,3 L0,6" fill="var(--morpho-400)"/></marker></defs></svg>
 <div id="node-modals"></div>
 
 <script src="js/force3d.js"></script>
@@ -436,6 +530,8 @@ body {
 <script src="js/focus.js"></script>
 <script src="js/mode2d.js"></script>
 <script src="js/data.js"></script>
+<script src="js/algorithms.js"></script>
+<script src="js/querybuilder.js"></script>
 <script src="js/query.js"></script>
 <script src="js/ui.js"></script>
 </body>

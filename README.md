@@ -41,8 +41,9 @@ A lightweight, browser-based graph explorer for [Dgraph](https://dgraph.io) data
 
 ## Requirements
 
-- Go 1.22+
-- A running Dgraph instance with the HTTP API exposed (default: `localhost:28080`)
+- Go 1.22+ (for building from source)
+- **Or** Podman / Docker (for running the container image)
+- A running Dgraph instance with the HTTP API exposed (default: `localhost:28028`)
 
 ## Running Dgraph
 
@@ -70,7 +71,7 @@ cd dgraph
 podman compose up -d
 ```
 
-This exposes Dgraph on `localhost:28080` (Caddy proxies Alpha API + Ratel UI on a single port).
+This exposes Dgraph on `localhost:28028` (Caddy proxies Alpha API + Ratel UI on a single port).
 
 To use a different port:
 
@@ -82,10 +83,10 @@ GRAPH_PORT=9080 podman compose up -d
 
 ```bash
 # Health check
-curl http://localhost:28080/health
+curl http://localhost:28028/health
 
 # Open Ratel UI
-open http://localhost:28080
+open http://localhost:28028
 ```
 
 ### Stop / Reset
@@ -106,6 +107,7 @@ podman compose down -v
 | **Alpha** | `dgraph/dgraph:v24.0.5` | Query/mutation API (HTTP + gRPC) |
 | **Ratel** | `dgraph/ratel:v21.12.0` | Web-based Dgraph UI |
 | **Caddy** | `caddy:2-alpine` | Reverse proxy — routes `/query`, `/mutate`, `/alter`, `/health`, `/admin` to Alpha; everything else to Ratel |
+| **Viewer** | Built from `Containerfile` | Graph explorer UI — connects to Dgraph via Caddy |
 
 ## Quick Start
 
@@ -126,7 +128,58 @@ make stop
 Or run directly:
 
 ```bash
-go run . -dgraph http://localhost:28080 -port 18080
+go run . -dgraph http://localhost:28028 -port 18080
+```
+
+## Container
+
+The viewer ships as a `Containerfile` for Podman or Docker.
+
+### Build the image
+
+```bash
+podman build -t dgraph-viewer .
+```
+
+### Run standalone
+
+Point the container at your Dgraph instance using `DGRAPH_HTTP`:
+
+```bash
+podman run --rm -p 18080:18080 \
+  -e DGRAPH_HTTP=http://host.containers.internal:28028 \
+  dgraph-viewer
+```
+
+> **Note:** Use `host.containers.internal` (Podman) or `host.docker.internal` (Docker) to reach services on the host machine from inside the container.
+
+Override the viewer port:
+
+```bash
+podman run --rm -p 9090:9090 \
+  -e DGRAPH_HTTP=http://host.containers.internal:28028 \
+  dgraph-viewer -port 9090
+```
+
+### Run with Compose
+
+The `dgraph/compose.yml` includes the viewer alongside the full Dgraph stack. One command brings up everything:
+
+```bash
+cd dgraph
+podman compose up -d
+```
+
+| Service | Default port | Override |
+|---|---|---|
+| Dgraph (Caddy) | 28028 | `GRAPH_PORT` |
+| Viewer | 18080 | `VIEWER_PORT` |
+
+The viewer connects to Dgraph internally via the compose network — no host port mapping needed for that link.
+
+```bash
+# Custom ports
+GRAPH_PORT=9080 VIEWER_PORT=8080 podman compose up -d
 ```
 
 ## Makefile
@@ -218,8 +271,9 @@ Or just click the **All** button.
 
 ```
 dgraph_viewer/
+├── Containerfile        # Multi-stage container build (Go build → Alpine runtime)
 ├── dgraph/
-│   ├── compose.yml      # Podman Compose stack (Zero + Alpha + Ratel + Caddy)
+│   ├── compose.yml      # Podman Compose stack (Zero + Alpha + Ratel + Caddy + Viewer)
 │   └── Caddyfile        # Reverse proxy config — single port for all services
 ├── main.go              # HTTP server, Dgraph proxy, session/connection pooling
 ├── ui.go                # Embeds static/ via go:embed

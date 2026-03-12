@@ -1,5 +1,7 @@
-# Dgraph stack — single port via Caddy reverse proxy
-# Default port: 28080 (override with GRAPH_PORT env var)
+# Dgraph stack + Viewer — single compose deployment
+# Default ports:
+#   Dgraph: 28028 (override with GRAPH_PORT)
+#   Viewer: 18080 (override with VIEWER_PORT)
 #
 # Usage:
 #   podman compose up -d
@@ -55,9 +57,24 @@ services:
     networks:
       - dgraph
     ports:
-      - "${GRAPH_PORT:-28080}:80"
+      - "${GRAPH_PORT:-28028}:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+
+  viewer:
+    build:
+      context: ..
+      dockerfile: Containerfile
+    restart: unless-stopped
+    depends_on:
+      alpha:
+        condition: service_healthy
+    environment:
+      - DGRAPH_HTTP=http://caddy:80
+    networks:
+      - dgraph
+    ports:
+      - "${VIEWER_PORT:-18080}:18080"
 
 networks:
   dgraph:

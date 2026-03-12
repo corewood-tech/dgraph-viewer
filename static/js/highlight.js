@@ -6,6 +6,9 @@ function doRaycast() {
 
   raycaster.setFromCamera(mouse, camera);
   var meshes = nodeGroup.children.filter(function(c) { return c.userData && c.userData.uid; });
+  if (highlightQuery && highlightQuery.nodeSet) {
+    meshes = meshes.filter(function(c) { return highlightQuery.nodeSet.has(c.userData.uid); });
+  }
   var intersects = raycaster.intersectObjects(meshes, false);
   var prev = hoveredNode;
   if (intersects.length > 0) {
@@ -23,8 +26,14 @@ function doRaycast() {
 
 // ── Highlight (BFS) ─────────────────────────────────────────────────
 function highlightConnections(d) {
+  var workingLinks = (highlightQuery && highlightQuery.nodeSet)
+    ? graphLinks.filter(function(l) {
+        var s = l.source.uid || l.source, t = l.target.uid || l.target;
+        return highlightQuery.nodeSet.has(s) && highlightQuery.nodeSet.has(t);
+      })
+    : graphLinks;
   var adj = new Map();
-  graphLinks.forEach(function(l) {
+  workingLinks.forEach(function(l) {
     var sid = l.source.uid || l.source, tid = l.target.uid || l.target;
     if (!adj.has(sid)) adj.set(sid, []);
     if (!adj.has(tid)) adj.set(tid, []);

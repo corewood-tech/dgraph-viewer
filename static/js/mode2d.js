@@ -95,9 +95,17 @@ function render2D() {
   var enter = nodeSel.enter().append('g')
     .attr('class', 'node')
     .call(drag2D(sim2d))
-    .on('click', function(e, d) { e.stopPropagation(); selectedNode = d; activeNode = d; showNodeInfo(d); updateActiveNode2D(); handleFocusClick(d); })
-    .on('mouseenter', function(e, d) { highlightConnections2D(d); })
-    .on('mouseleave', function() { clearHighlight2D(); });
+    .on('click', function(e, d) {
+      e.stopPropagation();
+      if (highlightQuery && highlightQuery.nodeSet && !highlightQuery.nodeSet.has(d.uid)) return;
+      if (_algoNodeSelectInput) { algoFillNodeSelect(d.uid); return; }
+      selectedNode = d; activeNode = d; showNodeInfo(d); updateActiveNode2D(); handleFocusClick(d);
+    })
+    .on('mouseenter', function(e, d) {
+      if (highlightQuery && highlightQuery.nodeSet && !highlightQuery.nodeSet.has(d.uid)) return;
+      highlightConnections2D(d);
+    })
+    .on('mouseleave', function() { clearHighlight2D(); if (highlightQuery) applyHighlightQuery2D(); });
 
   enter.each(function(d) {
     var g = d3.select(this);
@@ -114,7 +122,12 @@ function render2D() {
   enter.append('text').attr('dx', 14).attr('dy', 4).text(function(d) { return d.label || d.uid; });
 
   nodeG2d.selectAll('g.node')
-    .on('click', function(e, d) { e.stopPropagation(); selectedNode = d; activeNode = d; showNodeInfo(d); updateActiveNode2D(); handleFocusClick(d); })
+    .on('click', function(e, d) {
+      e.stopPropagation();
+      if (highlightQuery && highlightQuery.nodeSet && !highlightQuery.nodeSet.has(d.uid)) return;
+      if (_algoNodeSelectInput) { algoFillNodeSelect(d.uid); return; }
+      selectedNode = d; activeNode = d; showNodeInfo(d); updateActiveNode2D(); handleFocusClick(d);
+    })
     .each(function(d) {
       var g = d3.select(this);
       var r = nodeRadius2D(d);
@@ -186,8 +199,14 @@ function drag2D(sim) {
 }
 
 function highlightConnections2D(d) {
+  var workingLinks = (highlightQuery && highlightQuery.nodeSet)
+    ? graphLinks.filter(function(l) {
+        var s = l.source.uid || l.source, t = l.target.uid || l.target;
+        return highlightQuery.nodeSet.has(s) && highlightQuery.nodeSet.has(t);
+      })
+    : graphLinks;
   var adj = new Map();
-  graphLinks.forEach(function(l) {
+  workingLinks.forEach(function(l) {
     var sid = l.source.uid || l.source, tid = l.target.uid || l.target;
     if (!adj.has(sid)) adj.set(sid, []);
     if (!adj.has(tid)) adj.set(tid, []);

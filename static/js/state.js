@@ -11,6 +11,8 @@ var scaleByConns = true;
 var focusMode = false;
 var focusedNode = null;
 var focusRanks = null;
+var highlightQuery = null;
+// Shape: { scores: Map<uid,number>, nodeSet: Set<uid>, mode: 'gradient'|'binary'|'community'|'path', label: string, communities?: Array<Set<uid>> }
 var globalMouseX = 0, globalMouseY = 0;
 window.addEventListener('mousemove', function(e) { globalMouseX = e.clientX; globalMouseY = e.clientY; });
 

@@ -30,6 +30,7 @@ function handleFocusClick(d) {
   }
   if (viewMode === '3d') applyFocus3D();
   else applyFocus2D();
+  if (highlightQuery) applyHighlightQuery();
   return true;
 }
 

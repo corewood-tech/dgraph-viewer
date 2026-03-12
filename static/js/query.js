@@ -57,6 +57,7 @@ function resetView() {
 function clearGraph() {
   graphNodes.clear(); graphLinks.length = 0; linkSet.clear();
   selectedNode = null; hoveredNode = null;
+  clearHighlightQuery();
   if (viewMode === '3d') { if (simulation) simulation.stop(); rebuildScene(); }
   else { if (sim2d) sim2d.stop(); if (linkG2d) linkG2d.selectAll('*').remove(); if (labelG2d) labelG2d.selectAll('*').remove(); if (nodeG2d) nodeG2d.selectAll('*').remove(); }
   closeAllModals();
@@ -85,4 +86,71 @@ async function loadSchema() {
 
 function clearSchema() {
   document.getElementById('schema-panel').innerHTML = '';
+}
+
+// ── DQL Algorithm Queries ───────────────────────────────────────────
+function runDQLAlgorithm(dql, callback) {
+  setStatus('Running DQL algorithm...');
+  fetch('/api/query', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({query: dql})})
+    .then(function(resp) {
+      if (!resp.ok) return resp.text().then(function(t) { throw new Error(t); });
+      return resp.json();
+    })
+    .then(function(data) {
+      if (data.errors) { setStatus('DQL Error: ' + data.errors.map(function(e){return e.message}).join('; ')); return; }
+      var ingested = new Set();
+      if (data.data) {
+        for (var k in data.data) {
+          var arr = data.data[k];
+          if (Array.isArray(arr)) {
+            arr.forEach(function(obj) {
+              ingestNode(obj);
+              if (obj.uid) ingested.add(obj.uid);
+              // Also collect nested UIDs
+              for (var prop in obj) {
+                if (prop === 'uid' || prop === 'dgraph.type') continue;
+                var val = obj[prop];
+                if (Array.isArray(val)) val.forEach(function(item) { if (item && item.uid) ingested.add(item.uid); });
+                else if (val && typeof val === 'object' && val.uid) ingested.add(val.uid);
+              }
+            });
+          }
+        }
+      }
+      renderGraph();
+      setStatus('DQL algorithm returned ' + ingested.size + ' nodes');
+      if (callback) callback(ingested);
+    })
+    .catch(function(e) { setStatus('DQL Error: ' + e.message); });
+}
+
+function runDQLShortestPath(sourceUid, targetUid) {
+  var dql = '{\n  path as shortest(from: ' + sourceUid + ', to: ' + targetUid + ') {\n    expand(_all_)\n  }\n  path(func: uid(path)) {\n    uid\n    dgraph.type\n    expand(_all_) {\n      uid\n      dgraph.type\n      expand(_all_)\n    }\n  }\n}';
+  runDQLAlgorithm(dql, function(uids) {
+    if (uids.size === 0) {
+      showAlgoResult('No path found via DQL');
+      return;
+    }
+    var pathSet = uids;
+    var scores = new Map();
+    var idx = 0;
+    uids.forEach(function(uid) { scores.set(uid, idx++); });
+    highlightQuery = {scores: scores, nodeSet: pathSet, mode: 'path', label: 'DQL Shortest Path (' + uids.size + ' nodes)'};
+    applyHighlightQuery();
+    showAlgoResultSummary(highlightQuery);
+  });
+}
+
+function runDQLEgoNetwork(centerUid, radius) {
+  var dql = '{\n  ego(func: uid(' + centerUid + ')) @recurse(depth: ' + radius + ') {\n    uid\n    dgraph.type\n    expand(_all_)\n  }\n}';
+  runDQLAlgorithm(dql, function(uids) {
+    if (uids.size === 0) {
+      showAlgoResult('No results from DQL ego query');
+      return;
+    }
+    highlightQuery = {nodeSet: uids, mode: 'binary', label: 'DQL Ego Network (' + uids.size + ' nodes)', scores: new Map()};
+    uids.forEach(function(uid) { highlightQuery.scores.set(uid, 1); });
+    applyHighlightQuery();
+    showAlgoResultSummary(highlightQuery);
+  });
 }

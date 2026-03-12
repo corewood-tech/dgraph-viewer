@@ -189,7 +189,7 @@ func getOrCreateSession(w http.ResponseWriter, r *http.Request) (string, string)
 }
 
 func main() {
-	defaultDgraphAddr = "http://localhost:28080"
+	defaultDgraphAddr = "http://localhost:28028"
 	if env := os.Getenv("DGRAPH_HTTP"); env != "" {
 		defaultDgraphAddr = env
 	}
