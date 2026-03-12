@@ -20,21 +20,6 @@ function runAll() {
   runQuery();
 }
 
-async function expandNode(d) {
-  if (d.expanded) return;
-  setStatus('Expanding ' + d.uid + '...');
-  var query = '{ node(func: uid(' + d.uid + ')) { uid expand(_all_) { uid dgraph.type expand(_all_) } } }';
-  try {
-    var resp = await fetch('/api/query', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({query: query})});
-    var data = await resp.json();
-    if (data.data && data.data.node) data.data.node.forEach(function(n) { ingestNode(n, d.x, d.y, d.z); });
-    d.expanded = true;
-    renderGraph();
-    setStatus('Expanded ' + d.uid);
-    if (selectedNode && selectedNode.uid === d.uid) showNodeInfo(d);
-  } catch(e) { setStatus('Error: ' + e.message); }
-}
-
 function resetView() {
   if (viewMode === '3d') {
     if (graphNodes.size === 0) {
@@ -74,7 +59,7 @@ function clearGraph() {
   selectedNode = null; hoveredNode = null;
   if (viewMode === '3d') { if (simulation) simulation.stop(); rebuildScene(); }
   else { if (sim2d) sim2d.stop(); if (linkG2d) linkG2d.selectAll('*').remove(); if (labelG2d) labelG2d.selectAll('*').remove(); if (nodeG2d) nodeG2d.selectAll('*').remove(); }
-  document.getElementById('node-info').innerHTML = '<p style="color:#484f58">Click a node to inspect. Double-click to expand.</p>';
+  closeAllModals();
   document.getElementById('legend').innerHTML = '';
   setStatus('Cleared');
 }
@@ -84,14 +69,20 @@ async function loadSchema() {
   try {
     var resp = await fetch('/api/schema');
     var data = await resp.json();
-    var info = document.getElementById('node-info');
-    var html = '<h3>Schema</h3>';
+    var panel = document.getElementById('schema-panel');
+    var html = '<div class="schema-header"><h3>Schema</h3><button class="schema-close" onclick="clearSchema()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button></div>';
+    html += '<div class="schema-body">';
     if (data.data && data.data.schema) {
       data.data.schema.forEach(function(s) {
         html += '<div class="prop-row"><span class="prop-key">' + escHtml(s.predicate) + '</span><span class="prop-val">' + escHtml(s.type || '') + (s.list ? ' [list]' : '') + (s.index ? ' @index(' + s.tokenizer.join(',') + ')' : '') + '</span></div>';
       });
     }
-    info.innerHTML = html;
+    html += '</div>';
+    panel.innerHTML = html;
     setStatus('Schema loaded');
   } catch(e) { setStatus('Error: ' + e.message); }
+}
+
+function clearSchema() {
+  document.getElementById('schema-panel').innerHTML = '';
 }

@@ -63,11 +63,11 @@ function rebuildScene() {
     var canvas = document.createElement('canvas');
     var ctx = canvas.getContext('2d');
     var fontSize = 64;
-    ctx.font = fontSize + 'px SF Mono, Fira Code, monospace';
+    ctx.font = fontSize + 'px HK Grotesk Pro, system-ui, sans-serif';
     var tw = ctx.measureText(label).width + 16;
     canvas.width = tw; canvas.height = fontSize + 16;
-    ctx.font = fontSize + 'px SF Mono, Fira Code, monospace';
-    ctx.fillStyle = '#c9d1d9';
+    ctx.font = fontSize + 'px HK Grotesk Pro, system-ui, sans-serif';
+    ctx.fillStyle = '#F5F0E6';
     ctx.textBaseline = 'middle';
     ctx.fillText(label, 8, canvas.height / 2);
     var tex = new THREE.CanvasTexture(canvas);
@@ -89,7 +89,7 @@ function rebuildScene() {
   for (var i = 0; i < numLinks; i++) {
     var l = graphLinks[i];
     var src = typeof l.source === 'object' ? l.source : graphNodes.get(l.source);
-    var base = src ? typeColor(src.type || 'unknown') : '#30363d';
+    var base = src ? typeColor(src.type || 'unknown') : '#0F3B24';
     var rgb = hexToRgb(base);
     var idx = i * 6;
     colors[idx] = colors[idx+3] = rgb[0]/255;

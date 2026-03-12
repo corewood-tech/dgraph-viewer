@@ -57,7 +57,7 @@ function applyFocus3D() {
       var l = graphLinks[i];
       var sid = l.source.uid || l.source, tid = l.target.uid || l.target;
       var src = typeof l.source === 'object' ? l.source : graphNodes.get(l.source);
-      var base = src ? typeColor(src.type || 'unknown') : '#30363d';
+      var base = src ? typeColor(src.type || 'unknown') : '#0F3B24';
       var visible = focusRanks.has(sid) && focusRanks.has(tid);
       var hex = visible ? adjustBrightness(base, Math.max(1.0, 2.5 - Math.max(focusRanks.get(sid), focusRanks.get(tid)) * 0.3)) : '#000000';
       var rgb = hexToRgb(hex);

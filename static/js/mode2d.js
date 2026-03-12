@@ -41,7 +41,7 @@ function init2D() {
   svg2d.call(zoom2d);
 
   svg2d.on('click', function(e) {
-    if (e.target.tagName === 'svg') { selectedNode = null; activeNode = null; updateActiveNode2D(); if (focusMode) { focusedNode = null; focusRanks = null; applyFocus2D(); } }
+    if (e.target.tagName === 'svg') { selectedNode = null; activeNode = null; if (_activeModal && _activeModal.parentNode) { _activeModal.remove(); _activeModal = null; } updateActiveNode2D(); if (focusMode) { focusedNode = null; focusRanks = null; applyFocus2D(); } }
   });
 
   g2d = svg2d.append('g');
@@ -59,7 +59,7 @@ function init2D() {
     .on('tick', ticked2D);
   sim2d.stop();
 
-  document.getElementById('controls-hint').innerHTML = 'Scroll: zoom &middot; Drag: pan<br>Click: select &middot; Double-click: expand';
+  document.getElementById('controls-hint').innerHTML = 'Scroll: zoom &middot; Drag: pan &middot; Click: select';
 }
 
 function render2D() {
@@ -83,10 +83,9 @@ function render2D() {
   nodeSel.exit().remove();
 
   var enter = nodeSel.enter().append('g')
-    .attr('class', function(d) { return 'node ' + (d.expanded ? 'expanded' : 'unexpanded'); })
+    .attr('class', 'node')
     .call(drag2D(sim2d))
     .on('click', function(e, d) { e.stopPropagation(); selectedNode = d; activeNode = d; showNodeInfo(d); updateActiveNode2D(); handleFocusClick(d); })
-    .on('dblclick', function(e, d) { expandNode(d); })
     .on('mouseenter', function(e, d) { highlightConnections2D(d); })
     .on('mouseleave', function() { clearHighlight2D(); });
 
@@ -105,7 +104,7 @@ function render2D() {
   enter.append('text').attr('dx', 14).attr('dy', 4).text(function(d) { return d.label || d.uid; });
 
   nodeG2d.selectAll('g.node')
-    .attr('class', function(d) { return 'node ' + (d.expanded ? 'expanded' : 'unexpanded'); })
+    .on('click', function(e, d) { e.stopPropagation(); selectedNode = d; activeNode = d; showNodeInfo(d); updateActiveNode2D(); handleFocusClick(d); })
     .each(function(d) {
       var g = d3.select(this);
       var r = nodeRadius2D(d);
@@ -119,7 +118,7 @@ function render2D() {
 
   linkG2d.selectAll('line').attr('stroke', function(d) {
     var src = typeof d.source === 'object' ? d.source : graphNodes.get(d.source);
-    return src ? typeColors2d(src.type || 'unknown') : '#30363d';
+    return src ? typeColors2d(src.type || 'unknown') : '#0F3B24';
   });
 
   sim2d.nodes(nodeArr);
@@ -203,7 +202,7 @@ function updateActiveNode2D() {
 function teardown2D() {
   if (sim2d) sim2d.stop();
   var container = document.getElementById('graph-container');
-  var svgs = container.querySelectorAll('svg');
+  var svgs = container.querySelectorAll(':scope > svg');
   svgs.forEach(function(s) { s.remove(); });
   svg2d = null; g2d = null; linkG2d = null; labelG2d = null; nodeG2d = null; sim2d = null;
 }

@@ -75,7 +75,7 @@ function applyHighlightColors() {
     for (var i = 0; i < graphLinks.length; i++) {
       var l = graphLinks[i];
       var src = typeof l.source === 'object' ? l.source : graphNodes.get(l.source);
-      var base = src ? typeColor(src.type || 'unknown') : '#30363d';
+      var base = src ? typeColor(src.type || 'unknown') : '#0F3B24';
       var hex;
       if (l._hlRank === undefined) hex = base;
       else if (l._hlRank < 0) hex = '#1a1e24';

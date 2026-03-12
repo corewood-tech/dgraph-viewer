@@ -6,7 +6,7 @@ function ingestNode(obj, px, py, pz) {
   if (!graphNodes.has(obj.uid)) {
     graphNodes.set(obj.uid, {
       uid: obj.uid, label: Array.isArray(label) ? label[0] : label,
-      type: type || 'unknown', props: obj, expanded: false,
+      type: type || 'unknown', props: obj,
       x: px ? px + (Math.random()-0.5)*60 : undefined,
       y: py ? py + (Math.random()-0.5)*60 : undefined,
       z: pz ? pz + (Math.random()-0.5)*60 : undefined,
