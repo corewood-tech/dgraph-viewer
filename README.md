@@ -8,17 +8,34 @@ A lightweight, browser-based graph explorer for [Dgraph](https://dgraph.io) data
 
 ## Features
 
-- **Interactive force-directed graph** — D3.js-powered visualization with physics-based layout
+### Visualization
+
+- **3D and 2D modes** — toggle between a Three.js 3D scene and a D3.js SVG view; graph state is preserved across switches
+- **Force-directed layout** — custom 3D force simulation (octree-based n-body) in 3D mode, D3 force simulation in 2D
+- **Cesium-style camera** — orbit, pan, tilt, free-look, and zoom with inertia and damping in 3D mode
+- **Orientation gizmo** — XYZ axis indicator synced to the camera in 3D mode
+- **Shape by type** — each `dgraph.type` gets a distinct platonic solid (icosahedron, octahedron, dodecahedron, tetrahedron, cube, sphere) in both 2D and 3D
+- **Color by type** — nodes colored by `dgraph.type`, with auto-generated legend
+- **Size by degree** — node radius scales logarithmically with connection count (toggle on/off)
+- **Source-colored edges** — lines inherit the color of their origin node
+- **Atmospheric fog** — exponential fog in 3D adds depth cues to large graphs
+
+### Interaction
+
 - **DQL query editor** — write and run arbitrary DQL queries with Cmd/Ctrl+Enter
 - **Expand on double-click** — fetch and render a node's edges incrementally
-- **Radial glow highlighting** — hover a node to see its connections fade over configurable depth (1-20 ranks)
-- **Color by type** — nodes colored by `dgraph.type`, with auto-generated legend
-- **Size by degree** — more connections = bigger node
-- **Source-colored edges** — lines inherit the color of their origin node
-- **Click-and-drag** — reposition nodes freely; zoom and pan the canvas
-- **Cluster by density** — force simulation naturally groups densely-connected subgraphs
+- **Radial glow highlighting** — hover a node to see BFS-ranked connections fade over configurable depth (1–20 ranks)
+- **Focus mode** — click a node to isolate its neighborhood; non-connected nodes and edges are hidden
 - **Node inspector** — sidebar shows all properties and clickable edge links
+- **Node dragging** — shift+drag a node in 3D (plain drag in 2D) to reposition it within the simulation
+- **Arrow key Z-axis** — push a selected node along the Z-axis with arrow keys in 3D
+- **Active node pulse** — selected node throbs and brightens to stay visible
+- **Reset view** — snap the camera back to fit the graph
+
+### Data & Connectivity
+
 - **Live target switching** — change the Dgraph address in the UI without restarting
+- **Session-based connections** — each browser tab gets its own session with connection pooling and idle reaping
 - **Read-only** — all mutations are blocked at the proxy layer
 - **Schema viewer** — inspect predicates, types, indexes, and tokenizers
 
@@ -30,14 +47,35 @@ A lightweight, browser-based graph explorer for [Dgraph](https://dgraph.io) data
 ## Quick Start
 
 ```bash
-# Clone and run
-go run .
+# Build and run in the background
+make start
 
 # Open in browser
 open http://localhost:18080
+
+# Check running instances
+make status
+
+# Stop
+make stop
 ```
 
-The viewer starts on port `18080` and connects to Dgraph at `http://localhost:28080` by default.
+Or run directly:
+
+```bash
+go run . -dgraph http://localhost:28080 -port 18080
+```
+
+## Makefile
+
+| Target | Description |
+|---|---|
+| `make start` | Build and start in the background (logs to `/tmp/dgraph-viewer.<port>.log`) |
+| `make stop` | Stop the running instance |
+| `make restart` | Stop then start |
+| `make status` | Show all running instances and their ports/PIDs |
+
+Override the port: `make start PORT=9090`
 
 ## Configuration
 
@@ -54,13 +92,6 @@ DGRAPH_HTTP=http://dgraph-host:8080 go run .
 
 # In the UI
 # Edit the "Dgraph" field at the top of the sidebar — connection switches live
-```
-
-### Build a Binary
-
-```bash
-go build -o dgraph-viewer .
-./dgraph-viewer -dgraph http://localhost:28080
 ```
 
 ## Usage
@@ -92,30 +123,58 @@ Or just click the **All** button.
 | Action | Effect |
 |---|---|
 | **Hover** a node | Highlights connected nodes with radial glow; shows labels along the chain |
-| **Click** a node | Inspects it in the sidebar (properties, edges) |
+| **Click** a node | Inspects it in the sidebar (properties, edges); in focus mode, isolates its neighborhood |
 | **Double-click** a node | Expands its edges by fetching from Dgraph |
-| **Drag** a node | Repositions it; other nodes adjust via force simulation |
+| **Shift+drag** a node (3D) | Repositions it within the force simulation |
+| **Drag** a node (2D) | Repositions it within the force simulation |
+| **Arrow Up/Down** (3D) | Pushes the selected node along the Z-axis |
 | **Scroll** | Zoom in/out |
-| **Drag background** | Pan the canvas |
+| **Left-drag** (3D) | Orbit the camera |
+| **Right-drag** (3D) | Zoom |
+| **Middle-drag** (3D) | Tilt |
+| **Ctrl+drag** (3D) | Free-look |
+| **Drag background** (2D) | Pan the canvas |
 
 ### Controls
 
 | Control | Description |
 |---|---|
+| **2D / 3D toggle** | Switch between D3 SVG and Three.js rendering modes |
 | **Dgraph** | Target Dgraph HTTP address — edits switch the connection live |
 | **Run Query** | Execute the DQL query (also Cmd/Ctrl+Enter) |
 | **All** | Load all nodes with `dgraph.type` |
 | **Clear** | Remove all nodes and edges from the canvas |
+| **Reset** | Fit the camera/viewport to the current graph |
 | **Schema** | Display the database schema in the sidebar |
 | **Depth** | Number of ranks for the highlight chain (default: 5) |
+| **Shapes** | Toggle platonic-solid shapes per type (vs. spheres/circles) |
+| **Scale** | Toggle degree-based node sizing |
+| **Focus** | Toggle focus mode — clicking a node isolates its neighborhood |
 
 ## Architecture
 
 ```
 dgraph_viewer/
-├── main.go    # HTTP server, Dgraph proxy, mutation blocking
-├── ui.go      # Embedded HTML/CSS/JS frontend (no build step)
-└── go.mod     # Go module (zero external dependencies)
+├── main.go              # HTTP server, Dgraph proxy, session/connection pooling
+├── ui.go                # Embeds static/ via go:embed
+├── static/
+│   ├── index.html       # Single-page UI shell
+│   └── js/
+│       ├── state.js     # Graph data structures, colors, helpers
+│       ├── materials.js # Three.js geometries, materials, simulation ref
+│       ├── data.js      # Node/link ingestion from Dgraph JSON
+│       ├── query.js     # Query execution, expand, clear, schema, reset
+│       ├── force3d.js   # Custom 3D force simulation (octree + n-body)
+│       ├── controls.js  # Cesium-style 3D camera controls
+│       ├── scene.js     # 3D mesh building, link geometry, render loop
+│       ├── highlight.js # 3D BFS raycasting and glow highlighting
+│       ├── focus.js     # Focus mode (BFS neighborhood isolation)
+│       ├── mode2d.js    # 2D SVG renderer (D3 force + shapes)
+│       ├── gizmo.js     # 3D orientation gizmo (XYZ axes)
+│       ├── animate.js   # Animation loop, active-node pulse, gizmo sync
+│       └── ui.js        # Sidebar, legend, option toggles, mode switching
+├── Makefile             # start/stop/restart/status targets
+└── go.mod               # Go module (zero external dependencies)
 ```
 
 The server is a thin HTTP proxy:

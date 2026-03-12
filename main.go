@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -14,13 +16,137 @@ import (
 	"time"
 )
 
+// connPool holds a shared *http.Client per unique dgraph address.
+// Multiple sessions pointing at the same address reuse one client.
+type connPool struct {
+	mu      sync.Mutex
+	clients map[string]*poolEntry
+}
+
+type poolEntry struct {
+	client  *http.Client
+	refs    int
+	lastUse time.Time
+}
+
+func newConnPool() *connPool {
+	p := &connPool{clients: make(map[string]*poolEntry)}
+	go p.reapLoop()
+	return p
+}
+
+func (p *connPool) acquire(addr string) *http.Client {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	e, ok := p.clients[addr]
+	if !ok {
+		e = &poolEntry{client: newHTTPClient()}
+		p.clients[addr] = e
+	}
+	e.refs++
+	e.lastUse = time.Now()
+	return e.client
+}
+
+func (p *connPool) release(addr string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	e, ok := p.clients[addr]
+	if !ok {
+		return
+	}
+	e.refs--
+	if e.refs <= 0 {
+		e.refs = 0
+		e.lastUse = time.Now()
+	}
+}
+
+// reapLoop closes idle clients with zero refs after 5 minutes.
+func (p *connPool) reapLoop() {
+	for {
+		time.Sleep(60 * time.Second)
+		p.mu.Lock()
+		for addr, e := range p.clients {
+			if e.refs <= 0 && time.Since(e.lastUse) > 5*time.Minute {
+				e.client.CloseIdleConnections()
+				delete(p.clients, addr)
+				log.Printf("Reaped idle connection pool for %s", addr)
+			}
+		}
+		p.mu.Unlock()
+	}
+}
+
+// session tracks a single browser session's dgraph target.
+type session struct {
+	addr    string
+	lastUse time.Time
+}
+
+type sessionStore struct {
+	mu       sync.RWMutex
+	sessions map[string]*session
+}
+
+func newSessionStore() *sessionStore {
+	s := &sessionStore{sessions: make(map[string]*session)}
+	go s.reapLoop()
+	return s
+}
+
+func (s *sessionStore) get(id string) (*session, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	sess, ok := s.sessions[id]
+	if ok {
+		sess.lastUse = time.Now()
+	}
+	return sess, ok
+}
+
+func (s *sessionStore) set(id, addr string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sessions[id] = &session{addr: addr, lastUse: time.Now()}
+}
+
+func (s *sessionStore) delete(id string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sess, ok := s.sessions[id]
+	if !ok {
+		return ""
+	}
+	addr := sess.addr
+	delete(s.sessions, id)
+	return addr
+}
+
+// reapLoop removes sessions idle for over 1 hour.
+func (s *sessionStore) reapLoop() {
+	for {
+		time.Sleep(5 * time.Minute)
+		s.mu.Lock()
+		for id, sess := range s.sessions {
+			if time.Since(sess.lastUse) > 1*time.Hour {
+				delete(s.sessions, id)
+				log.Printf("Reaped idle session %s", id[:8])
+			}
+		}
+		s.mu.Unlock()
+	}
+}
+
 var (
-	dgraphAddr   string
-	dgraphClient *http.Client
-	dgraphMu     sync.RWMutex
+	defaultDgraphAddr string
+	pool              *connPool
+	sessions          *sessionStore
 )
 
-func newDgraphClient() *http.Client {
+func newHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &http.Transport{
@@ -33,59 +159,60 @@ func newDgraphClient() *http.Client {
 	}
 }
 
-func getDgraphAddr() string {
-	dgraphMu.RLock()
-	defer dgraphMu.RUnlock()
-	return dgraphAddr
+func generateSessionID() string {
+	b := make([]byte, 16)
+	rand.Read(b)
+	return hex.EncodeToString(b)
 }
 
-func getDgraphClient() *http.Client {
-	dgraphMu.RLock()
-	defer dgraphMu.RUnlock()
-	return dgraphClient
-}
-
-func setDgraphAddr(addr string) {
-	dgraphMu.Lock()
-	defer dgraphMu.Unlock()
-
-	addr = strings.TrimRight(addr, "/")
-
-	// Close old client regardless
-	if dgraphClient != nil {
-		dgraphClient.CloseIdleConnections()
+// getOrCreateSession returns (sessionID, dgraphAddr) for the request,
+// setting a cookie if needed.
+func getOrCreateSession(w http.ResponseWriter, r *http.Request) (string, string) {
+	cookie, err := r.Cookie("dgv_session")
+	if err == nil {
+		if sess, ok := sessions.get(cookie.Value); ok {
+			return cookie.Value, sess.addr
+		}
 	}
 
-	dgraphAddr = addr
-	dgraphClient = newDgraphClient()
+	// New session
+	id := generateSessionID()
+	sessions.set(id, defaultDgraphAddr)
+	http.SetCookie(w, &http.Cookie{
+		Name:     "dgv_session",
+		Value:    id,
+		Path:     "/",
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+	return id, defaultDgraphAddr
 }
 
 func main() {
-	defaultAddr := "http://localhost:28080"
+	defaultDgraphAddr = "http://localhost:28080"
 	if env := os.Getenv("DGRAPH_HTTP"); env != "" {
-		defaultAddr = env
+		defaultDgraphAddr = env
 	}
-	flag.StringVar(&dgraphAddr, "dgraph", defaultAddr, "Dgraph HTTP endpoint")
+	var port int
+	flag.StringVar(&defaultDgraphAddr, "dgraph", defaultDgraphAddr, "Default Dgraph HTTP endpoint")
+	flag.IntVar(&port, "port", 18080, "HTTP listen port")
 	flag.Parse()
-	dgraphAddr = strings.TrimRight(dgraphAddr, "/")
-	dgraphClient = newDgraphClient()
+	defaultDgraphAddr = strings.TrimRight(defaultDgraphAddr, "/")
+
+	pool = newConnPool()
+	sessions = newSessionStore()
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("/", serveUI)
+	mux.Handle("/", staticHandler())
 	mux.HandleFunc("/api/query", handleQuery)
 	mux.HandleFunc("/api/schema", handleSchema)
 	mux.HandleFunc("/api/config", handleConfig)
 	mux.HandleFunc("/api/disconnect", handleDisconnect)
 
-	addr := ":18080"
+	addr := fmt.Sprintf(":%d", port)
 	log.Printf("Dgraph Viewer running at http://localhost%s", addr)
 	log.Fatal(http.ListenAndServe(addr, mux))
-}
-
-func serveUI(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write([]byte(indexHTML))
 }
 
 func handleQuery(w http.ResponseWriter, r *http.Request) {
@@ -93,6 +220,8 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
 		return
 	}
+
+	_, dgAddr := getOrCreateSession(w, r)
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -122,7 +251,7 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := dgraphQuery(query)
+	resp, err := dgraphQuery(dgAddr, query)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -133,8 +262,9 @@ func handleQuery(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleSchema(w http.ResponseWriter, r *http.Request) {
-	schemaQuery := `schema {}`
-	resp, err := dgraphQuery(schemaQuery)
+	_, dgAddr := getOrCreateSession(w, r)
+
+	resp, err := dgraphQuery(dgAddr, `schema {}`)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadGateway)
 		return
@@ -148,21 +278,23 @@ func handleDisconnect(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "POST only", http.StatusMethodNotAllowed)
 		return
 	}
-	dgraphMu.Lock()
-	if dgraphClient != nil {
-		dgraphClient.CloseIdleConnections()
-		dgraphClient = nil
+
+	sessID, _ := getOrCreateSession(w, r)
+	oldAddr := sessions.delete(sessID)
+	if oldAddr != "" {
+		pool.release(oldAddr)
+		log.Printf("Session %s disconnected from %s", sessID[:8], oldAddr)
 	}
-	dgraphMu.Unlock()
-	log.Println("Dgraph disconnected")
 	w.WriteHeader(http.StatusOK)
 }
 
 func handleConfig(w http.ResponseWriter, r *http.Request) {
+	sessID, dgAddr := getOrCreateSession(w, r)
+
 	switch r.Method {
 	case http.MethodGet:
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"dgraph": getDgraphAddr()})
+		json.NewEncoder(w).Encode(map[string]string{"dgraph": dgAddr})
 	case http.MethodPut:
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
@@ -177,27 +309,34 @@ func handleConfig(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		addr := strings.TrimSpace(req.Dgraph)
-		if addr == "" {
+		newAddr := strings.TrimSpace(req.Dgraph)
+		if newAddr == "" {
 			http.Error(w, "empty address", http.StatusBadRequest)
 			return
 		}
-		setDgraphAddr(addr)
-		log.Printf("Dgraph target changed to %s", addr)
+		newAddr = strings.TrimRight(newAddr, "/")
+
+		// Release old, acquire new
+		if dgAddr != "" {
+			pool.release(dgAddr)
+		}
+		pool.acquire(newAddr)
+		sessions.set(sessID, newAddr)
+
+		log.Printf("Session %s target changed to %s", sessID[:8], newAddr)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"dgraph": getDgraphAddr()})
+		json.NewEncoder(w).Encode(map[string]string{"dgraph": newAddr})
 	default:
 		http.Error(w, "GET or PUT only", http.StatusMethodNotAllowed)
 	}
 }
 
-func dgraphQuery(query string) ([]byte, error) {
+func dgraphQuery(addr, query string) ([]byte, error) {
 	payload := fmt.Sprintf(`{"query": %s}`, jsonString(query))
-	client := getDgraphClient()
-	if client == nil {
-		return nil, fmt.Errorf("not connected to any dgraph instance")
-	}
-	resp, err := client.Post(getDgraphAddr()+"/query", "application/json", strings.NewReader(payload))
+	client := pool.acquire(addr)
+	defer pool.release(addr)
+
+	resp, err := client.Post(addr+"/query", "application/json", strings.NewReader(payload))
 	if err != nil {
 		return nil, fmt.Errorf("dgraph request failed: %w", err)
 	}
