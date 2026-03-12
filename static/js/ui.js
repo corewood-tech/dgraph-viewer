@@ -152,6 +152,17 @@ function makeDraggable(el) {
 }
 
 // ── Modal connection lines ─────────────────────────────────────────
+function clipToRect(cx, cy, tx, ty, rect) {
+  var dx = tx - cx, dy = ty - cy;
+  if (dx === 0 && dy === 0) return {x: cx, y: cy};
+  var hw = rect.width / 2, hh = rect.height / 2;
+  var mx = rect.left + hw, my = rect.top + hh;
+  var scaleX = Math.abs(dx) > 0 ? hw / Math.abs(dx) : Infinity;
+  var scaleY = Math.abs(dy) > 0 ? hh / Math.abs(dy) : Infinity;
+  var t = Math.min(scaleX, scaleY);
+  return {x: mx + dx * t, y: my + dy * t};
+}
+
 function updateModalConnections() {
   var svg = document.getElementById('modal-connections');
   var defs = svg.querySelector('defs');
@@ -181,9 +192,12 @@ function updateModalConnections() {
 
     var r1 = modalMap[sid].getBoundingClientRect();
     var r2 = modalMap[tid].getBoundingClientRect();
-    // Connect from center of each modal header
-    var x1 = r1.left + r1.width / 2, y1 = r1.top + 20;
-    var x2 = r2.left + r2.width / 2, y2 = r2.top + 20;
+    // Connect from edge of source to edge of target
+    var cx1 = r1.left + r1.width / 2, cy1 = r1.top + r1.height / 2;
+    var cx2 = r2.left + r2.width / 2, cy2 = r2.top + r2.height / 2;
+    var p1 = clipToRect(cx1, cy1, cx2, cy2, r1);
+    var p2 = clipToRect(cx2, cy2, cx1, cy1, r2);
+    var x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
 
     var g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
