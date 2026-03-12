@@ -1,0 +1,23 @@
+:80 {
+	# Dgraph Alpha API
+	handle /query* {
+		reverse_proxy alpha:8080
+	}
+	handle /mutate* {
+		reverse_proxy alpha:8080
+	}
+	handle /alter* {
+		reverse_proxy alpha:8080
+	}
+	handle /health* {
+		reverse_proxy alpha:8080
+	}
+	handle /admin* {
+		reverse_proxy alpha:8080
+	}
+
+	# Ratel UI — everything else
+	handle {
+		reverse_proxy ratel:8000
+	}
+}

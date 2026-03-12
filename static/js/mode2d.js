@@ -59,7 +59,17 @@ function init2D() {
     .on('tick', ticked2D);
   sim2d.stop();
 
-  document.getElementById('controls-hint').innerHTML = 'Scroll: zoom &middot; Drag: pan &middot; Click: select';
+  document.getElementById('hint-body-content').innerHTML =
+    '<table>' +
+    '<tr><th colspan="2" class="hint-section">Camera</th></tr>' +
+    '<tr><td>Scroll</td><td>Zoom</td></tr>' +
+    '<tr><td>Drag</td><td>Pan</td></tr>' +
+    '<tr><th colspan="2" class="hint-section">Nodes</th></tr>' +
+    '<tr><td>Click</td><td>Select node</td></tr>' +
+    '<tr><td>Drag node</td><td>Move node</td></tr>' +
+    '<tr><td>&larr; / &rarr;</td><td>Move selected on X axis</td></tr>' +
+    '<tr><td>&uarr; / &darr;</td><td>Move selected on Y axis</td></tr>' +
+    '</table>';
 }
 
 function render2D() {
@@ -138,10 +148,41 @@ function ticked2D() {
 }
 
 function drag2D(sim) {
+  var cluster = null, anchor = null;
   return d3.drag()
-    .on('start', function(e, d) { if (!e.active) sim.alphaTarget(0.1).restart(); d.fx = d.x; d.fy = d.y; })
-    .on('drag', function(e, d) { d.fx = e.x; d.fy = e.y; })
-    .on('end', function(e, d) { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; });
+    .on('start', function(e, d) {
+      if (!e.active) sim.alphaTarget(0.1).restart();
+      d.fx = d.x; d.fy = d.y;
+      cluster = getClusterNeighbors(d.uid, 2);
+      anchor = {x: d.x, y: d.y};
+      cluster.forEach(function(entry) {
+        var n = entry.node;
+        n._dragAnchorX = n.x; n._dragAnchorY = n.y;
+      });
+    })
+    .on('drag', function(e, d) {
+      d.fx = e.x; d.fy = e.y;
+      if (cluster && anchor) {
+        var ddx = e.x - anchor.x, ddy = e.y - anchor.y;
+        cluster.forEach(function(entry) {
+          var n = entry.node, s = entry.strength;
+          n.fx = n._dragAnchorX + ddx * s;
+          n.fy = n._dragAnchorY + ddy * s;
+        });
+      }
+    })
+    .on('end', function(e, d) {
+      if (!e.active) sim.alphaTarget(0);
+      d.fx = null; d.fy = null;
+      if (cluster) {
+        cluster.forEach(function(entry) {
+          var n = entry.node;
+          n.fx = null; n.fy = null;
+          delete n._dragAnchorX; delete n._dragAnchorY;
+        });
+        cluster = null; anchor = null;
+      }
+    });
 }
 
 function highlightConnections2D(d) {

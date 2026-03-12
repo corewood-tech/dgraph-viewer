@@ -268,11 +268,25 @@ body {
 #legend .swatch { width: 10px; height: 10px; border-radius: 50%; }
 #controls-hint {
   position: absolute; bottom: 16px; left: 16px;
-  background: rgba(11,43,26,0.8);
-  border: 1px solid rgba(250,247,240,0.06); border-radius: 8px;
-  padding: 8px 12px; font-size: 10px;
-  color: var(--cream-600); z-index: 5; line-height: 1.6;
+  background: rgba(11,43,26,0.85); backdrop-filter: blur(8px);
+  border: 1px solid rgba(250,247,240,0.08); border-radius: 8px;
+  font-size: 11px; color: var(--cream-600); z-index: 5;
+  overflow: hidden;
 }
+#controls-hint .hint-toggle {
+  display: flex; align-items: center; gap: 6px; width: 100%;
+  background: none; border: none; color: var(--cream-500); cursor: pointer;
+  padding: 6px 10px; font-size: 11px; font-family: inherit;
+}
+#controls-hint .hint-toggle svg { width: 14px; height: 14px; transition: transform 0.2s; }
+#controls-hint.collapsed .hint-toggle svg { transform: rotate(180deg); }
+#controls-hint .hint-body { padding: 0 10px 8px; }
+#controls-hint.collapsed .hint-body { display: none; }
+#controls-hint table { border-collapse: collapse; }
+#controls-hint td { padding: 2px 0; }
+#controls-hint td:first-child { color: var(--cream-300); padding-right: 12px; white-space: nowrap; }
+#controls-hint td:last-child { color: var(--cream-600); }
+#controls-hint .hint-section { color: var(--morpho-400); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; padding: 6px 0 2px; text-align: left; font-weight: 500; }
 #orientation-gizmo {
   position: absolute; top: 56px; right: 12px; width: 120px; height: 120px;
   z-index: 5; pointer-events: none; border-radius: 50%;
@@ -379,10 +393,27 @@ body {
     <button id="fullscreen-toggle" onclick="toggleFullscreen()" title="Fullscreen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></button>
     <div id="legend"></div>
     <div id="orientation-gizmo"></div>
-    <div id="controls-hint">
-      Left-drag: orbit &middot; Shift+drag: pan &middot; Scroll: zoom<br>
-      Shift+drag node: move &middot; Right-drag: zoom &middot; Middle: tilt<br>
-      Ctrl+drag: free-look &middot; Click: select
+    <div id="controls-hint" class="collapsed">
+      <button class="hint-toggle" onclick="this.parentElement.classList.toggle('collapsed')">
+        <span>Instructions</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+      </button>
+      <div class="hint-body" id="hint-body-content">
+        <table>
+          <tr><th colspan="2" class="hint-section">Camera</th></tr>
+          <tr><td>Left-drag</td><td>Orbit</td></tr>
+          <tr><td>Shift + drag</td><td>Pan</td></tr>
+          <tr><td>Scroll</td><td>Zoom</td></tr>
+          <tr><td>Middle-drag</td><td>Tilt</td></tr>
+          <tr><td>Ctrl + drag</td><td>Free-look</td></tr>
+          <tr><th colspan="2" class="hint-section">Nodes</th></tr>
+          <tr><td>Click</td><td>Select node</td></tr>
+          <tr><td>Shift + drag node</td><td>Move node</td></tr>
+          <tr><td>&larr; / &rarr;</td><td>Move selected on X axis</td></tr>
+          <tr><td>&uarr; / &darr;</td><td>Move selected on Y axis</td></tr>
+          <tr><td>Shift + &uarr; / &darr;</td><td>Move selected on Z axis (3D)</td></tr>
+        </table>
+      </div>
     </div>
     <div id="corewood-footer">
       <a href="https://corewood.io/" target="_blank" rel="noopener">

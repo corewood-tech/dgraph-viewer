@@ -45,6 +45,12 @@ function CesiumControls(cam, el) {
             raycaster.ray.intersectPlane(dragPlane, intersection);
             dragOffset.subVectors(nodePos, intersection);
             draggedNode.fx = draggedNode.x; draggedNode.fy = draggedNode.y; draggedNode.fz = draggedNode.z;
+            dragCluster = getClusterNeighbors(uid, 2);
+            dragCluster.forEach(function(entry) {
+              var n = entry.node;
+              n._dragAnchorX = n.x; n._dragAnchorY = n.y; n._dragAnchorZ = n.z;
+            });
+            dragAnchor = {x: draggedNode.x, y: draggedNode.y, z: draggedNode.z};
             if (simulation) simulation.alphaTarget(0.1).restart();
           } else {
             self._mode = 'pan';
@@ -94,6 +100,15 @@ function CesiumControls(cam, el) {
         if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
           intersection.add(dragOffset);
           draggedNode.fx = intersection.x; draggedNode.fy = intersection.y; draggedNode.fz = intersection.z;
+          if (dragCluster && dragAnchor) {
+            var ddx = intersection.x - dragAnchor.x, ddy = intersection.y - dragAnchor.y, ddz = intersection.z - dragAnchor.z;
+            dragCluster.forEach(function(entry) {
+              var n = entry.node, s = entry.strength;
+              n.fx = n._dragAnchorX + ddx * s;
+              n.fy = n._dragAnchorY + ddy * s;
+              n.fz = n._dragAnchorZ + ddz * s;
+            });
+          }
         }
       }
     } else if (self._mode === 'pan') {
@@ -118,6 +133,14 @@ function CesiumControls(cam, el) {
   window.addEventListener('mouseup', function(e) {
     if (self._mode === 'nodedrag' && draggedNode) {
       draggedNode.fx = null; draggedNode.fy = null; draggedNode.fz = null;
+      if (dragCluster) {
+        dragCluster.forEach(function(entry) {
+          var n = entry.node;
+          n.fx = null; n.fy = null; n.fz = null;
+          delete n._dragAnchorX; delete n._dragAnchorY; delete n._dragAnchorZ;
+        });
+        dragCluster = null; dragAnchor = null;
+      }
       if (simulation) simulation.alphaTarget(0);
       draggedNode = null;
     }

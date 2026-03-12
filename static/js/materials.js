@@ -2,7 +2,7 @@
 var scene, camera, renderer, raycaster, mouse;
 var nodeGroup, linkMesh;
 var gizmoScene, gizmoCamera, gizmoRenderer;
-var draggedNode = null, dragPlane, dragOffset;
+var draggedNode = null, dragPlane, dragOffset, dragCluster = null, dragAnchor = null;
 var activeNode = null;
 var nodeMeshes = new Map();
 var linkLabelSprites = [];

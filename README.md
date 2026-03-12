@@ -44,6 +44,69 @@ A lightweight, browser-based graph explorer for [Dgraph](https://dgraph.io) data
 - Go 1.22+
 - A running Dgraph instance with the HTTP API exposed (default: `localhost:28080`)
 
+## Running Dgraph
+
+A ready-to-use Dgraph stack is included in `dgraph/`. It runs Dgraph Zero, Alpha, Ratel, and a Caddy reverse proxy behind a single port using Podman Compose.
+
+### Install Podman
+
+| Platform | Install | Link |
+|---|---|---|
+| **macOS** | `brew install podman podman-compose` | [podman.io/docs/installation#macos](https://podman.io/docs/installation#macos) |
+| **Linux** | Package manager (apt, dnf, pacman, etc.) | [podman.io/docs/installation#linux](https://podman.io/docs/installation#linux) |
+| **Windows** | Podman Desktop installer or `winget install RedHat.Podman` | [podman.io/docs/installation#windows](https://podman.io/docs/installation#windows) |
+
+After installing, initialize the Podman machine (macOS/Windows only):
+
+```bash
+podman machine init
+podman machine start
+```
+
+### Start Dgraph
+
+```bash
+cd dgraph
+podman compose up -d
+```
+
+This exposes Dgraph on `localhost:28080` (Caddy proxies Alpha API + Ratel UI on a single port).
+
+To use a different port:
+
+```bash
+GRAPH_PORT=9080 podman compose up -d
+```
+
+### Verify
+
+```bash
+# Health check
+curl http://localhost:28080/health
+
+# Open Ratel UI
+open http://localhost:28080
+```
+
+### Stop / Reset
+
+```bash
+# Stop (preserves data)
+podman compose down
+
+# Stop and delete all data
+podman compose down -v
+```
+
+### What's in the stack
+
+| Service | Image | Role |
+|---|---|---|
+| **Zero** | `dgraph/dgraph:v24.0.5` | Cluster coordination, shard management |
+| **Alpha** | `dgraph/dgraph:v24.0.5` | Query/mutation API (HTTP + gRPC) |
+| **Ratel** | `dgraph/ratel:v21.12.0` | Web-based Dgraph UI |
+| **Caddy** | `caddy:2-alpine` | Reverse proxy — routes `/query`, `/mutate`, `/alter`, `/health`, `/admin` to Alpha; everything else to Ratel |
+
 ## Quick Start
 
 ```bash
@@ -155,6 +218,9 @@ Or just click the **All** button.
 
 ```
 dgraph_viewer/
+├── dgraph/
+│   ├── compose.yml      # Podman Compose stack (Zero + Alpha + Ratel + Caddy)
+│   └── Caddyfile        # Reverse proxy config — single port for all services
 ├── main.go              # HTTP server, Dgraph proxy, session/connection pooling
 ├── ui.go                # Embeds static/ via go:embed
 ├── static/
@@ -194,4 +260,4 @@ All communication with Dgraph uses the HTTP `/query` endpoint. No gRPC dependenc
 
 ## License
 
-MIT
+See [License](./LICENSE)

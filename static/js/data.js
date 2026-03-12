@@ -28,6 +28,40 @@ function ingestNode(obj, px, py, pz) {
   }
 }
 
+// Get connected neighbors with BFS depth and strength falloff
+// Returns Map of uid → {node, strength} where strength = 1 at depth 1, decays per hop
+function getClusterNeighbors(uid, maxDepth) {
+  maxDepth = maxDepth || 2;
+  var adj = new Map();
+  graphLinks.forEach(function(l) {
+    var s = (typeof l.source === 'object') ? l.source.uid : l.source;
+    var t = (typeof l.target === 'object') ? l.target.uid : l.target;
+    if (!adj.has(s)) adj.set(s, []);
+    if (!adj.has(t)) adj.set(t, []);
+    adj.get(s).push(t);
+    adj.get(t).push(s);
+  });
+  var result = new Map();
+  var frontier = [uid];
+  var visited = new Set([uid]);
+  for (var depth = 1; depth <= maxDepth; depth++) {
+    var next = [];
+    frontier.forEach(function(id) {
+      (adj.get(id) || []).forEach(function(nb) {
+        if (!visited.has(nb)) {
+          visited.add(nb);
+          var n = graphNodes.get(nb);
+          if (n) result.set(nb, {node: n, strength: Math.pow(0.5, depth)});
+          next.push(nb);
+        }
+      });
+    });
+    frontier = next;
+    if (!frontier.length) break;
+  }
+  return result;
+}
+
 function addLink(src, tgt, pred) {
   var key = src + '|' + tgt + '|' + pred;
   if (linkSet.has(key)) return;

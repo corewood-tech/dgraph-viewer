@@ -38,15 +38,29 @@ function animate() {
   }
 }
 
-// ── Arrow key Z-axis movement ───────────────────────────────────────
+// ── Arrow key node movement ─────────────────────────────────────────
 document.addEventListener('keydown', function(e) {
   if (!selectedNode) return;
   var tag = document.activeElement && document.activeElement.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-  if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+  var step = 25;
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
     e.preventDefault();
-    var step = 25, dir = e.key === 'ArrowUp' ? -1 : 1;
+    var dir = e.key === 'ArrowRight' ? 1 : -1;
+    selectedNode.fx = (selectedNode.fx != null ? selectedNode.fx : (selectedNode.x || 0)) + dir * step;
+    if (viewMode === '3d') simulation.alpha(0.3).restart();
+    else if (sim2d) sim2d.alpha(0.3).restart();
+  } else if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+    e.preventDefault();
+    if (viewMode !== '3d') return;
+    var dir = e.key === 'ArrowUp' ? -1 : 1;
     selectedNode.fz = (selectedNode.fz != null ? selectedNode.fz : (selectedNode.z || 0)) + dir * step;
     simulation.alpha(0.3).restart();
+  } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    var dir = e.key === 'ArrowUp' ? 1 : -1;
+    selectedNode.fy = (selectedNode.fy != null ? selectedNode.fy : (selectedNode.y || 0)) + dir * step;
+    if (viewMode === '3d') simulation.alpha(0.3).restart();
+    else if (sim2d) sim2d.alpha(0.3).restart();
   }
 });

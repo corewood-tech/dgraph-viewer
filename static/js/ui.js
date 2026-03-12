@@ -227,10 +227,21 @@ function focusNode(uid) {
     activeNode = n;
     showNodeInfo(n);
     if (viewMode === '3d' && controls) {
-      controls.target.set(n.x||0, n.y||0, n.z||0);
-      controls.spherical.radius = Math.min(controls.spherical.radius, 150);
       controls._spinVel.theta = 0; controls._spinVel.phi = 0; controls._zoomVel = 0;
-      controls._syncCamera();
+      var tx = n.x||0, ty = n.y||0, tz = n.z||0;
+      var sx = controls.target.x, sy = controls.target.y, sz = controls.target.z;
+      var sr = controls.spherical.radius, tr = Math.min(sr, 150);
+      var duration = 600, start = performance.now();
+      function ease(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+      function flyStep(now) {
+        var t = Math.min((now - start) / duration, 1);
+        var e = ease(t);
+        controls.target.set(sx + (tx-sx)*e, sy + (ty-sy)*e, sz + (tz-sz)*e);
+        controls.spherical.radius = sr + (tr-sr)*e;
+        controls._syncCamera();
+        if (t < 1) requestAnimationFrame(flyStep);
+      }
+      requestAnimationFrame(flyStep);
     } else if (viewMode === '2d' && svg2d && zoom2d) {
       var container = document.getElementById('graph-container');
       var w = container.clientWidth, h = container.clientHeight;
@@ -360,7 +371,21 @@ function initGraph() {
 
   controls = new CesiumControls(camera, renderer.domElement);
 
-  document.getElementById('controls-hint').innerHTML = 'Left-drag: orbit &middot; Shift+drag: pan &middot; Scroll: zoom<br>Shift+drag node: move &middot; Right-drag: zoom &middot; Middle: tilt<br>Ctrl+drag: free-look &middot; Click: select';
+  document.getElementById('hint-body-content').innerHTML =
+    '<table>' +
+    '<tr><th colspan="2" class="hint-section">Camera</th></tr>' +
+    '<tr><td>Left-drag</td><td>Orbit</td></tr>' +
+    '<tr><td>Shift + drag</td><td>Pan</td></tr>' +
+    '<tr><td>Scroll</td><td>Zoom</td></tr>' +
+    '<tr><td>Middle-drag</td><td>Tilt</td></tr>' +
+    '<tr><td>Ctrl + drag</td><td>Free-look</td></tr>' +
+    '<tr><th colspan="2" class="hint-section">Nodes</th></tr>' +
+    '<tr><td>Click</td><td>Select node</td></tr>' +
+    '<tr><td>Shift + drag node</td><td>Move node</td></tr>' +
+    '<tr><td>&larr; / &rarr;</td><td>Move selected on X axis</td></tr>' +
+    '<tr><td>&uarr; / &darr;</td><td>Move selected on Y axis</td></tr>' +
+    '<tr><td>Shift + &uarr; / &darr;</td><td>Move selected on Z axis</td></tr>' +
+    '</table>';
 
   simulation = Force3D.forceSimulation([])
     .force('link', Force3D.forceLink([]).id(function(d) { return d.uid; }).distance(80).strength(0.3))
