@@ -22,12 +22,9 @@ function computeBFSRanks(d) {
 
 function handleFocusClick(d) {
   if (!focusMode) return false;
-  if (focusedNode && focusedNode.uid === d.uid) {
-    focusedNode = null; focusRanks = null;
-  } else {
-    focusedNode = d;
-    focusRanks = computeBFSRanks(d);
-  }
+  if (focusedNode && focusedNode.uid === d.uid) return true; // stay focused on same node
+  focusedNode = d;
+  focusRanks = computeBFSRanks(d);
   if (viewMode === '3d') applyFocus3D();
   else applyFocus2D();
   if (highlightQuery) applyHighlightQuery();

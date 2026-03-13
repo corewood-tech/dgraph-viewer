@@ -69,15 +69,6 @@ body {
 .addr-row { display: flex; gap: 6px; align-items: center; }
 .addr-row label { font-size: 11px; color: var(--cream-600); white-space: nowrap; font-weight: 500; }
 .addr-row input { flex: 1; }
-#query-input {
-  width: 100%; height: 120px; background: var(--forest-900); color: var(--cream-100);
-  border: 1px solid rgba(250,247,240,0.08);
-  border-radius: 8px; padding: 10px;
-  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
-  font-size: 12px; resize: vertical;
-}
-#query-input:focus { outline: none; border-color: var(--morpho-400); box-shadow: 0 0 0 2px rgba(42,149,200,0.15); }
-#query-input::placeholder { color: var(--cream-700); }
 
 /* ─── Buttons ─── */
 .btn-row { display: flex; gap: 6px; }
@@ -185,6 +176,79 @@ body {
 .edge-pred { color: var(--forest-300); font-weight: 500; min-width: 80px; }
 .edge-target { color: var(--morpho-400); cursor: pointer; text-decoration: underline; }
 .edge-target:hover { color: var(--morpho-300); }
+
+/* ─── Query modal ─── */
+.query-modal {
+  position: fixed; z-index: 210;
+  width: 520px; min-width: 320px; min-height: 220px; max-height: 80vh;
+  overflow: hidden; resize: both;
+  background: rgba(11,43,26,0.95); backdrop-filter: blur(12px);
+  border: 1px solid rgba(250,247,240,0.1); border-radius: 12px;
+  padding: 16px; font-size: 12px; color: var(--cream-100);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 48px rgba(42,149,200,0.06);
+  animation: modal-in 0.2s ease-out;
+  display: flex; flex-direction: column;
+  bottom: 24px; right: 24px;
+}
+.query-modal .modal-header {
+  display: flex; align-items: center; gap: 6px;
+  cursor: grab; user-select: none; flex-shrink: 0;
+}
+.query-modal .modal-header:active { cursor: grabbing; }
+.query-modal .modal-header h3 { color: var(--morpho-300); font-size: 14px; font-weight: 700; margin: 0; }
+.query-modal .modal-body { overflow: hidden; flex: 1; margin-top: 10px; display: flex; flex-direction: column; }
+.query-modal .modal-btn {
+  background: none; border: none; color: var(--cream-600); cursor: pointer;
+  padding: 3px; border-radius: 4px; transition: all 0.15s; line-height: 0; flex-shrink: 0;
+}
+.query-modal .modal-btn:hover { color: var(--morpho-400); background: rgba(250,247,240,0.06); }
+.query-modal .modal-btn svg { width: 14px; height: 14px; stroke: currentColor; stroke-width: 2; fill: none; }
+.query-modal.collapsed { height: auto !important; min-height: 0; resize: none; }
+.query-modal.collapsed .modal-body { display: none; }
+
+.query-editor-wrap {
+  position: relative; flex: 1; min-height: 120px;
+  border: 1px solid rgba(250,247,240,0.08); border-radius: 8px;
+  overflow: hidden;
+}
+.query-highlight, .query-editor-wrap textarea {
+  position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  margin: 0; padding: 10px; box-sizing: border-box;
+  font-family: ui-monospace, 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+  font-size: 12px; line-height: 1.5; tab-size: 2;
+  white-space: pre-wrap; word-wrap: break-word;
+  overflow: auto;
+}
+.query-highlight {
+  background: var(--forest-900); color: transparent;
+  pointer-events: none; z-index: 0;
+}
+.query-highlight code { font: inherit; color: inherit; }
+.query-editor-wrap textarea {
+  background: transparent; color: var(--cream-100);
+  caret-color: var(--cream-100);
+  border: none; outline: none; resize: none;
+  z-index: 1;
+}
+.query-editor-wrap textarea::placeholder { color: var(--cream-700); }
+/* When highlighting is active, make textarea text invisible so <pre> shows through */
+.query-editor-wrap.hl-active textarea { color: transparent; }
+
+/* DQL token classes */
+.dql-keyword { color: var(--morpho-400); font-weight: 600; }
+.dql-function { color: var(--morpho-300); }
+.dql-directive { color: var(--forest-300); font-weight: 500; }
+.dql-string { color: var(--cream-300); }
+.dql-number { color: #edc948; }
+.dql-comment { color: var(--cream-700); font-style: italic; }
+.dql-variable { color: var(--morpho-glow); }
+.dql-brace { color: var(--cream-600); }
+
+.query-modal-actions {
+  display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-shrink: 0;
+}
+.query-modal-actions .btn { flex: 0; padding: 6px 16px; }
+.query-modal-hint { font-size: 10px; color: var(--cream-700); margin-left: auto; }
 
 /* ─── Schema panel ─── */
 #schema-panel { flex: 1; overflow-y: auto; padding: 0; font-size: 12px; }
@@ -397,11 +461,15 @@ body {
 .algo-community-members { padding-left: 16px; }
 .algo-community-member { font-size: 10px; }
 .algo-community-label { flex: 1; }
-.algo-community-focus {
+.algo-community-focus, .algo-community-unfocus {
   display: inline-flex; align-items: center; padding: 2px; border-radius: 3px;
-  color: var(--cream-600); cursor: pointer; transition: all 0.15s; margin-left: auto; flex-shrink: 0;
+  color: var(--cream-600); cursor: pointer; transition: all 0.15s; flex-shrink: 0;
 }
 .algo-community-focus:hover { color: var(--morpho-400); background: rgba(250,247,240,0.06); }
+.algo-community-unfocus { display: none; margin-left: 2px; }
+.algo-community-unfocus:hover { color: #e55; background: rgba(250,247,240,0.06); }
+.algo-community-header.focused .algo-community-focus { display: none; }
+.algo-community-header.focused .algo-community-unfocus { display: inline-flex; }
 .algo-multi-input.collecting { border-color: var(--morpho-400); box-shadow: 0 0 0 2px rgba(42,149,200,0.2); }
 .algo-multi-hint { font-size: 10px; color: var(--morpho-500); margin-top: 2px; display: flex; align-items: center; justify-content: space-between; }
 .algo-multi-done {
@@ -513,9 +581,8 @@ body {
           <label>Dgraph <span class="help-icon" data-help-key="dql" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
           <input id="dgraph-addr" type="text" value="" placeholder="http://localhost:28080" />
         </div>
-        <textarea id="query-input" placeholder="Enter DQL query... e.g.&#10;{&#10;  all(func: has(dgraph.type), first: 50) {&#10;    uid&#10;    expand(_all_) {&#10;      uid&#10;      expand(_all_)&#10;    }&#10;  }&#10;}" spellcheck="false"></textarea>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="runQuery()"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>Query</button>
+          <button class="btn btn-primary" onclick="openQueryModal()"><svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>Query</button>
           <button class="btn" onclick="runAll()"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>All</button>
           <button class="btn" onclick="loadSchema()"><svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>Schema</button>
         </div>
@@ -595,9 +662,7 @@ body {
       </div>
     </div>
     <div id="corewood-footer">
-      <a href="https://corewood.io/" target="_blank" rel="noopener">
-        <img src="img/corewood_symbol_avatar_green.png" alt="Corewood" style="height:16px;vertical-align:middle;margin-right:4px;">corewood.io
-      </a>
+      <a href="https://corewood.io/" target="_blank" rel="noopener">corewood.io</a>
       <span class="footer-sep">&middot;</span>
       <a href="https://www.verdantintel.com/" target="_blank" rel="noopener">verdantintel.com</a>
     </div>
@@ -605,6 +670,29 @@ body {
 </div>
 <svg id="modal-connections"><defs><marker id="conn-arrow" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,3 L0,6" fill="var(--morpho-400)"/></marker></defs></svg>
 <div id="node-modals"></div>
+
+<div id="query-modal" class="query-modal" style="display:none">
+  <div class="modal-header">
+    <div class="modal-title-wrap"><h3>Query Editor</h3></div>
+    <button class="modal-btn collapse-btn" onclick="toggleQueryModalCollapse()" title="Collapse">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </button>
+    <button class="modal-btn" onclick="closeQueryModal()" title="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="modal-body">
+    <div class="query-editor-wrap">
+      <pre class="query-highlight" aria-hidden="true"><code id="query-highlight-code"></code></pre>
+      <textarea id="query-input" placeholder="Enter DQL query..." spellcheck="false"></textarea>
+    </div>
+    <div class="query-modal-actions">
+      <button class="btn btn-primary" onclick="runQuery()">Run</button>
+      <button class="btn" onclick="runAll()">All</button>
+      <span class="query-modal-hint">Ctrl+Enter to run</span>
+    </div>
+  </div>
+</div>
 
 <div id="help-tooltip" onmouseenter="keepHelp()" onmouseleave="scheduleHideHelp()"></div>
 <script>
@@ -882,5 +970,6 @@ function createHelpIcon(key) {
 <script src="js/querybuilder.js"></script>
 <script src="js/query.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/querymodal.js"></script>
 </body>
 </html>

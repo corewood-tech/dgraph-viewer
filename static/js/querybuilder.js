@@ -552,6 +552,10 @@ function runAlgorithm() {
   highlightQuery = result;
   applyHighlightQuery();
   showAlgoResultSummary(result);
+  // Fly to result set if it's a proper subset (path, binary, or small community)
+  if (result.nodeSet && result.nodeSet.size < graphNodes.size && (result.mode === 'path' || result.mode === 'binary')) {
+    flyToNodeSet(result.nodeSet);
+  }
 }
 
 function showAlgoResult(msg) {
@@ -645,7 +649,8 @@ function _algoAppendPage() {
       headerDiv.innerHTML = '<span class="algo-community-dot" style="background:' + COMMUNITY_PALETTE[i % COMMUNITY_PALETTE.length] + '"></span>' +
         '<span class="algo-community-toggle"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>' +
         '<span class="algo-community-label">Community ' + (i + 1) + ': ' + c.size + ' nodes</span>' +
-        '<span class="algo-community-focus" title="Focus this community"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>';
+        '<span class="algo-community-focus" title="Focus this community"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>' +
+        '<span class="algo-community-unfocus" title="Deactivate focus"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></span>';
       var membersDiv = document.createElement('div');
       membersDiv.className = 'algo-community-members';
       membersDiv.style.display = 'none';
@@ -675,11 +680,15 @@ function _algoAppendPage() {
         m.style.display = open ? 'none' : 'block';
         header.querySelector('.algo-community-toggle svg').style.transform = open ? '' : 'rotate(90deg)';
       });
-      // Focus community
+      // Focus / unfocus community
       (function(communitySet, idx) {
         headerDiv.querySelector('.algo-community-focus').addEventListener('click', function(e) {
           e.stopPropagation();
           focusCommunity(communitySet, idx);
+        });
+        headerDiv.querySelector('.algo-community-unfocus').addEventListener('click', function(e) {
+          e.stopPropagation();
+          restoreCommunityView();
         });
       })(c, i);
       div.appendChild(headerDiv);
@@ -935,56 +944,94 @@ function applyHighlightQuery2D() {
   });
 }
 
+// ── Fly camera to frame a set of nodes ──────────────────────────────
+function flyToNodeSet(nodeSet) {
+  if (!nodeSet || nodeSet.size === 0) return;
+  var minX = Infinity, minY = Infinity, minZ = Infinity;
+  var maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  nodeSet.forEach(function(uid) {
+    var n = graphNodes.get(uid);
+    if (!n) return;
+    var x = n.x || 0, y = n.y || 0, z = n.z || 0;
+    if (x < minX) minX = x; if (x > maxX) maxX = x;
+    if (y < minY) minY = y; if (y > maxY) maxY = y;
+    if (z < minZ) minZ = z; if (z > maxZ) maxZ = z;
+  });
+  if (minX === Infinity) return;
+
+  var cx = (minX + maxX) / 2, cy = (minY + maxY) / 2, cz = (minZ + maxZ) / 2;
+  var span = Math.max(maxX - minX, maxY - minY, maxZ - minZ, 1);
+
+  if (viewMode === '3d' && controls) {
+    controls._spinVel.theta = 0; controls._spinVel.phi = 0; controls._zoomVel = 0;
+    var sx = controls.target.x, sy = controls.target.y, sz = controls.target.z;
+    var sr = controls.spherical.radius;
+    var tr = span * 1.2 + 50;
+    var duration = 600, start = performance.now();
+    function ease(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2, 3)/2; }
+    (function animate(now) {
+      var t = Math.min((now - start) / duration, 1);
+      var e = ease(t);
+      controls.target.set(sx + (cx - sx) * e, sy + (cy - sy) * e, sz + (cz - sz) * e);
+      controls.spherical.radius = sr + (tr - sr) * e;
+      controls._syncCamera();
+      if (t < 1) requestAnimationFrame(animate);
+    })(performance.now());
+  } else if (viewMode === '2d' && svg2d && zoom2d) {
+    var container = document.getElementById('graph-container');
+    var w = container.clientWidth, h = container.clientHeight;
+    var spanXY = Math.max(maxX - minX, maxY - minY, 1);
+    var scale = Math.min(w / (spanXY + 100), h / (spanXY + 100), 4);
+    scale = Math.max(scale, 0.2);
+    svg2d.transition().duration(500).call(zoom2d.transform,
+      d3.zoomIdentity.translate(w / 2 - cx * scale, h / 2 - cy * scale).scale(scale));
+  }
+}
+
 // Store the full community result so we can return to it
+
 var _fullCommunityResult = null;
+var _focusedCommunityIdx = -1;
 
 function focusCommunity(communitySet, communityIdx) {
-  // Save original result if not already saved
+  // Save full community result so X can restore it
   if (highlightQuery && highlightQuery.mode === 'community' && !_fullCommunityResult) {
     _fullCommunityResult = highlightQuery;
   }
+  _focusedCommunityIdx = communityIdx;
   var scores = new Map();
   communitySet.forEach(function(uid) { scores.set(uid, 1); });
   highlightQuery = {
     scores: scores,
     nodeSet: communitySet,
     mode: 'binary',
-    label: 'Community ' + (communityIdx + 1) + ' (' + communitySet.size + ' nodes)',
-    _parentCommunityResult: _fullCommunityResult
+    label: 'Community ' + (communityIdx + 1) + ' (' + communitySet.size + ' nodes)'
   };
   applyHighlightQuery();
-  // Update result display
-  var el = document.getElementById('algo-result');
-  if (el) {
-    var html = '<strong>' + escHtml(highlightQuery.label) + '</strong>';
-    html += '<div class="algo-btn-row" style="margin-top:6px"><button class="btn" onclick="restoreCommunityView()" style="flex:none;padding:4px 10px;font-size:11px">';
-    html += '<svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-2px"><polyline points="15 18 9 12 15 6" fill="none" stroke="currentColor" stroke-width="2"/></svg> Back to all communities</button></div>';
-    html += '<div class="algo-top-list" id="algo-result-list"></div>';
-    el.innerHTML = html;
-    // Show members
-    var list = document.getElementById('algo-result-list');
-    communitySet.forEach(function(uid) {
-      var n = graphNodes.get(uid);
-      var label = n ? (n.label || uid) : uid;
-      var row = document.createElement('div');
-      row.className = 'algo-top-item';
-      row.innerHTML = '<span class="algo-node-link" onclick="focusNode(\'' + uid + '\')">' + escHtml(label) + '</span>';
-      list.appendChild(row);
-    });
-  }
+  flyToNodeSet(communitySet);
+  // Mark focused header in result list
+  var headers = document.querySelectorAll('#algo-result .algo-community-header');
+  headers.forEach(function(h, idx) {
+    h.classList.toggle('focused', idx === communityIdx);
+  });
 }
 
 function restoreCommunityView() {
+  _focusedCommunityIdx = -1;
+  // Restore full community highlight
   if (_fullCommunityResult) {
     highlightQuery = _fullCommunityResult;
     _fullCommunityResult = null;
     applyHighlightQuery();
-    showAlgoResultSummary(highlightQuery);
   }
+  // Clear focused state on all headers
+  var headers = document.querySelectorAll('#algo-result .algo-community-header');
+  headers.forEach(function(h) { h.classList.remove('focused'); });
 }
 
 function clearHighlightQuery() {
   _fullCommunityResult = null;
+  _focusedCommunityIdx = -1;
   highlightQuery = null;
   _algoNodeSelectInput = null;
   var resultEl = document.getElementById('algo-result');

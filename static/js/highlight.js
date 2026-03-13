@@ -108,4 +108,6 @@ function applyHighlightColors() {
     var activeVisible = activeUid && (sid === activeUid || tid === activeUid);
     obj.sprite.visible = hlVisible || activeVisible;
   }
+  // Re-apply algorithm highlight overlay so it isn't overwritten by hover BFS
+  if (highlightQuery) applyHighlightQuery();
 }

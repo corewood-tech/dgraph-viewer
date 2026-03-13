@@ -339,11 +339,6 @@ document.getElementById('glow-depth').addEventListener('change', function() {
   glowDepth = Math.max(1, Math.min(20, parseInt(this.value) || 5)); this.value = glowDepth;
 });
 
-// ── Keyboard shortcut ───────────────────────────────────────────────
-document.getElementById('query-input').addEventListener('keydown', function(e) {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); runQuery(); }
-});
-
 // ── 3D teardown ─────────────────────────────────────────────────────
 function teardown3D() {
   if (simulation) simulation.stop();
