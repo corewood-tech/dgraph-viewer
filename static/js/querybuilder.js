@@ -79,6 +79,18 @@ function initAlgoPanel() {
     catSelect.appendChild(opt);
   }
 
+  // Add help icons next to dropdowns
+  var row = catSelect.parentElement;
+  if (row && typeof createHelpIcon === 'function') {
+    var catHelp = createHelpIcon('cat_centrality');
+    catHelp.id = 'algo-cat-help';
+    catSelect.insertAdjacentElement('afterend', catHelp);
+
+    var algoHelp = createHelpIcon('algo_degree');
+    algoHelp.id = 'algo-algo-help';
+    algoSelect.insertAdjacentElement('afterend', algoHelp);
+  }
+
   catSelect.addEventListener('change', function() { populateAlgos(); });
   algoSelect.addEventListener('change', function() { populateParams(); });
 
@@ -90,6 +102,10 @@ function populateAlgos() {
   var algoSelect = document.getElementById('algo-select');
   var cat = catSelect.value;
   var algos = ALGO_REGISTRY[cat] || [];
+
+  // Update category help icon
+  var catHelp = document.getElementById('algo-cat-help');
+  if (catHelp) catHelp.setAttribute('data-help-key', 'cat_' + cat);
 
   algoSelect.innerHTML = '';
   algos.forEach(function(a) {
@@ -117,6 +133,10 @@ function populateParams() {
   _algoNodeSelectInput = null;
   var algo = getSelectedAlgo();
   if (!algo) return;
+
+  // Update algorithm help icon
+  var algoHelp = document.getElementById('algo-algo-help');
+  if (algoHelp) algoHelp.setAttribute('data-help-key', 'algo_' + algo.id);
 
   algo.params.forEach(function(p) {
     var row = document.createElement('div');
@@ -159,7 +179,7 @@ function populateParams() {
       input.type = 'text';
       input.className = 'algo-param-input algo-node-input';
       input.id = 'algo-p-' + p.name;
-      input.placeholder = 'Click node or type UID';
+      input.placeholder = 'Search by name, type, or UID...';
       input.setAttribute('autocomplete', 'off');
       input.addEventListener('focus', function() { _algoNodeSelectInput = this; });
       input.addEventListener('blur', function() {
@@ -178,13 +198,15 @@ function populateParams() {
       wrap.appendChild(chipBox);
       var input = document.createElement('input');
       input.type = 'text';
-      input.className = 'algo-param-input algo-node-input';
-      input.placeholder = 'Click node or type UID';
+      input.className = 'algo-param-input algo-node-input algo-multi-input';
+      input.placeholder = 'Search by name, type, or UID...';
       input.setAttribute('autocomplete', 'off');
-      input.addEventListener('focus', function() { _algoNodeSelectInput = this; });
-      input.addEventListener('blur', function() {
-        var self = this;
-        setTimeout(function() { if (_algoNodeSelectInput === self) _algoNodeSelectInput = null; }, 200);
+      // Multi-select stays active even on blur so user can keep clicking nodes
+      input.addEventListener('focus', function() {
+        _algoNodeSelectInput = this;
+        this.classList.add('collecting');
+        var hint = this.parentNode.querySelector('.algo-multi-hint');
+        if (hint) hint.style.display = '';
       });
       input.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
@@ -198,6 +220,22 @@ function populateParams() {
       });
       setupNodeAutocomplete(input);
       wrap.appendChild(input);
+      var hint = document.createElement('div');
+      hint.className = 'algo-multi-hint';
+      hint.style.display = 'none';
+      hint.innerHTML = '<span>Click nodes in graph to add</span>';
+      var doneBtn = document.createElement('button');
+      doneBtn.type = 'button';
+      doneBtn.className = 'algo-multi-done';
+      doneBtn.textContent = 'Done';
+      doneBtn.addEventListener('click', function() {
+        _algoNodeSelectInput = null;
+        var inp = this.closest('.algo-node-multi-wrap').querySelector('.algo-multi-input');
+        if (inp) inp.classList.remove('collecting');
+        this.parentNode.style.display = 'none';
+      });
+      hint.appendChild(doneBtn);
+      wrap.appendChild(hint);
       row.appendChild(wrap);
     } else if (p.type === 'typeSelect') {
       var wrap = document.createElement('div');
@@ -223,23 +261,111 @@ function populateParams() {
 }
 
 function setupNodeAutocomplete(input) {
-  var listId = 'algo-ac-' + Math.random().toString(36).slice(2);
-  var datalist = document.createElement('datalist');
-  datalist.id = listId;
-  input.setAttribute('list', listId);
-  input.parentNode && input.parentNode.appendChild(datalist);
-  // Defer append until added to DOM
-  var origAppend = input.addEventListener;
-  input.addEventListener('focus', function() {
-    if (!datalist.parentNode) input.parentNode.appendChild(datalist);
-    datalist.innerHTML = '';
+  var dropdown = document.createElement('div');
+  dropdown.className = 'algo-ac-dropdown';
+  var isMulti = input.classList.contains('algo-multi-input');
+  var maxVisible = 80;
+
+  function buildItems(filter) {
+    dropdown.innerHTML = '';
+    var count = 0;
+    var lc = (filter || '').toLowerCase();
     graphNodes.forEach(function(n) {
-      var opt = document.createElement('option');
-      opt.value = n.uid;
-      opt.textContent = (n.label || n.uid) + ' (' + (n.type || '') + ')';
-      datalist.appendChild(opt);
+      if (count >= maxVisible) return;
+      var label = n.label || n.uid;
+      var typeName = n.type || 'unknown';
+      var searchStr = (label + ' ' + typeName + ' ' + n.uid).toLowerCase();
+      if (lc && searchStr.indexOf(lc) === -1) return;
+      count++;
+      var item = document.createElement('div');
+      item.className = 'algo-ac-item';
+      item.innerHTML = '<span class="algo-ac-label">' + escHtml(label) + '</span><span class="algo-ac-type">' + escHtml(typeName) + '</span>';
+      item.dataset.uid = n.uid;
+      item.addEventListener('mousedown', function(e) {
+        e.preventDefault(); // prevent blur
+        var uid = this.dataset.uid;
+        if (isMulti) {
+          addMultiSelectChip(input.closest('.algo-node-multi-wrap'), uid);
+          input.value = '';
+          buildItems('');
+        } else {
+          input.value = uid;
+          var previewEl = input.parentNode.querySelector('.algo-node-preview');
+          if (previewEl) {
+            var nd = graphNodes.get(uid);
+            var pt = previewEl.querySelector('.algo-node-preview-text');
+            if (pt) pt.textContent = nd ? (nd.label || uid) + ' (' + (nd.type || '') + ')' : uid;
+            previewEl.style.display = '';
+          }
+          hideDropdown();
+        }
+      });
+      dropdown.appendChild(item);
     });
+    if (count === 0) {
+      var empty = document.createElement('div');
+      empty.className = 'algo-ac-empty';
+      empty.textContent = graphNodes.size === 0 ? 'No nodes loaded' : 'No matches';
+      dropdown.appendChild(empty);
+    }
+    if (count >= maxVisible) {
+      var more = document.createElement('div');
+      more.className = 'algo-ac-empty';
+      more.textContent = 'Type to filter (' + graphNodes.size + ' total)';
+      dropdown.appendChild(more);
+    }
+  }
+
+  function showDropdown() {
+    if (!dropdown.parentNode) input.parentNode.appendChild(dropdown);
+    buildItems(input.value);
+    dropdown.style.display = 'block';
+  }
+
+  function hideDropdown() {
+    dropdown.style.display = 'none';
+  }
+
+  input.addEventListener('focus', function() { showDropdown(); });
+  input.addEventListener('blur', function() {
+    // Delay to allow mousedown on items
+    setTimeout(hideDropdown, 150);
   });
+  input.addEventListener('input', function() {
+    buildItems(this.value);
+    if (dropdown.style.display !== 'block') showDropdown();
+    // Clear preview if user is editing
+    if (!isMulti) {
+      var preview = input.parentNode.querySelector('.algo-node-preview');
+      if (preview) preview.style.display = 'none';
+    }
+  });
+
+  // For single-select: add preview label and clear button
+  if (!isMulti) {
+    var preview = document.createElement('div');
+    preview.className = 'algo-node-preview';
+    preview.style.display = 'none';
+    var previewText = document.createElement('span');
+    previewText.className = 'algo-node-preview-text';
+    preview.appendChild(previewText);
+    var clearBtn = document.createElement('span');
+    clearBtn.className = 'algo-node-clear';
+    clearBtn.textContent = '\u00d7';
+    clearBtn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      input.value = '';
+      preview.style.display = 'none';
+      input.focus();
+    });
+    preview.appendChild(clearBtn);
+    // Append after input is in DOM
+    setTimeout(function() {
+      if (input.parentNode) {
+        input.parentNode.appendChild(preview);
+      }
+    }, 0);
+  }
 }
 
 function addMultiSelectChip(wrap, uid) {
@@ -272,6 +398,14 @@ function algoFillNodeSelect(uid) {
     input.value = '';
   } else {
     input.value = uid;
+    // Update preview
+    var previewEl = input.parentNode.querySelector('.algo-node-preview');
+    if (previewEl) {
+      var n = graphNodes.get(uid);
+      var pt = previewEl.querySelector('.algo-node-preview-text');
+      if (pt) pt.textContent = n ? (n.label || uid) + ' (' + (n.type || '') + ')' : uid;
+      previewEl.style.display = '';
+    }
   }
   return true;
 }
@@ -510,7 +644,8 @@ function _algoAppendPage() {
       headerDiv.className = 'algo-community-header algo-top-item';
       headerDiv.innerHTML = '<span class="algo-community-dot" style="background:' + COMMUNITY_PALETTE[i % COMMUNITY_PALETTE.length] + '"></span>' +
         '<span class="algo-community-toggle"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></span>' +
-        'Community ' + (i + 1) + ': ' + c.size + ' nodes';
+        '<span class="algo-community-label">Community ' + (i + 1) + ': ' + c.size + ' nodes</span>' +
+        '<span class="algo-community-focus" title="Focus this community"><svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>';
       var membersDiv = document.createElement('div');
       membersDiv.className = 'algo-community-members';
       membersDiv.style.display = 'none';
@@ -523,12 +658,30 @@ function _algoAppendPage() {
         row.innerHTML = '<span class="algo-node-link" onclick="focusNode(\'' + uid + '\')">' + escHtml(label) + '</span>';
         membersDiv.appendChild(row);
       });
-      headerDiv.addEventListener('click', function() {
-        var m = this.nextElementSibling;
+      // Toggle expand
+      headerDiv.querySelector('.algo-community-toggle').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var header = this.closest('.algo-community-header');
+        var m = header.nextElementSibling;
         var open = m.style.display !== 'none';
         m.style.display = open ? 'none' : 'block';
-        this.querySelector('.algo-community-toggle svg').style.transform = open ? '' : 'rotate(90deg)';
+        this.querySelector('svg').style.transform = open ? '' : 'rotate(90deg)';
       });
+      headerDiv.querySelector('.algo-community-label').addEventListener('click', function(e) {
+        e.stopPropagation();
+        var header = this.closest('.algo-community-header');
+        var m = header.nextElementSibling;
+        var open = m.style.display !== 'none';
+        m.style.display = open ? 'none' : 'block';
+        header.querySelector('.algo-community-toggle svg').style.transform = open ? '' : 'rotate(90deg)';
+      });
+      // Focus community
+      (function(communitySet, idx) {
+        headerDiv.querySelector('.algo-community-focus').addEventListener('click', function(e) {
+          e.stopPropagation();
+          focusCommunity(communitySet, idx);
+        });
+      })(c, i);
       div.appendChild(headerDiv);
       div.appendChild(membersDiv);
       div.style.padding = '0';
@@ -782,7 +935,56 @@ function applyHighlightQuery2D() {
   });
 }
 
+// Store the full community result so we can return to it
+var _fullCommunityResult = null;
+
+function focusCommunity(communitySet, communityIdx) {
+  // Save original result if not already saved
+  if (highlightQuery && highlightQuery.mode === 'community' && !_fullCommunityResult) {
+    _fullCommunityResult = highlightQuery;
+  }
+  var scores = new Map();
+  communitySet.forEach(function(uid) { scores.set(uid, 1); });
+  highlightQuery = {
+    scores: scores,
+    nodeSet: communitySet,
+    mode: 'binary',
+    label: 'Community ' + (communityIdx + 1) + ' (' + communitySet.size + ' nodes)',
+    _parentCommunityResult: _fullCommunityResult
+  };
+  applyHighlightQuery();
+  // Update result display
+  var el = document.getElementById('algo-result');
+  if (el) {
+    var html = '<strong>' + escHtml(highlightQuery.label) + '</strong>';
+    html += '<div class="algo-btn-row" style="margin-top:6px"><button class="btn" onclick="restoreCommunityView()" style="flex:none;padding:4px 10px;font-size:11px">';
+    html += '<svg viewBox="0 0 24 24" width="12" height="12" style="vertical-align:-2px"><polyline points="15 18 9 12 15 6" fill="none" stroke="currentColor" stroke-width="2"/></svg> Back to all communities</button></div>';
+    html += '<div class="algo-top-list" id="algo-result-list"></div>';
+    el.innerHTML = html;
+    // Show members
+    var list = document.getElementById('algo-result-list');
+    communitySet.forEach(function(uid) {
+      var n = graphNodes.get(uid);
+      var label = n ? (n.label || uid) : uid;
+      var row = document.createElement('div');
+      row.className = 'algo-top-item';
+      row.innerHTML = '<span class="algo-node-link" onclick="focusNode(\'' + uid + '\')">' + escHtml(label) + '</span>';
+      list.appendChild(row);
+    });
+  }
+}
+
+function restoreCommunityView() {
+  if (_fullCommunityResult) {
+    highlightQuery = _fullCommunityResult;
+    _fullCommunityResult = null;
+    applyHighlightQuery();
+    showAlgoResultSummary(highlightQuery);
+  }
+}
+
 function clearHighlightQuery() {
+  _fullCommunityResult = null;
   highlightQuery = null;
   _algoNodeSelectInput = null;
   var resultEl = document.getElementById('algo-result');

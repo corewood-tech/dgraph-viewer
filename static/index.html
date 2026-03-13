@@ -297,6 +297,7 @@ body {
 #corewood-footer {
   position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
   z-index: 5; font-size: 11px;
+  display: flex; align-items: center; gap: 12px;
 }
 #corewood-footer a {
   color: var(--forest-300); text-decoration: none; opacity: 0.7; transition: opacity 0.2s;
@@ -395,8 +396,49 @@ body {
 .algo-community-toggle svg { transition: transform 0.15s; }
 .algo-community-members { padding-left: 16px; }
 .algo-community-member { font-size: 10px; }
+.algo-community-label { flex: 1; }
+.algo-community-focus {
+  display: inline-flex; align-items: center; padding: 2px; border-radius: 3px;
+  color: var(--cream-600); cursor: pointer; transition: all 0.15s; margin-left: auto; flex-shrink: 0;
+}
+.algo-community-focus:hover { color: var(--morpho-400); background: rgba(250,247,240,0.06); }
+.algo-multi-input.collecting { border-color: var(--morpho-400); box-shadow: 0 0 0 2px rgba(42,149,200,0.2); }
+.algo-multi-hint { font-size: 10px; color: var(--morpho-500); margin-top: 2px; display: flex; align-items: center; justify-content: space-between; }
+.algo-multi-done {
+  background: var(--forest-700); border: 1px solid rgba(250,247,240,0.08); border-radius: 4px;
+  color: var(--cream-300); font-size: 10px; padding: 2px 8px; cursor: pointer; font-family: inherit;
+}
+.algo-multi-done:hover { background: var(--forest-600); border-color: var(--morpho-400); color: var(--morpho-300); }
 .algo-node-link { color: var(--morpho-400); cursor: pointer; text-decoration: underline; }
 .algo-node-link:hover { color: var(--morpho-300); }
+
+/* ─── Node autocomplete dropdown ─── */
+.algo-node-select-wrap, .algo-node-multi-wrap { position: relative; }
+.algo-ac-dropdown {
+  display: none; position: absolute; left: 0; right: 0; top: 100%;
+  max-height: 200px; overflow-y: auto; z-index: 50;
+  background: var(--forest-900); border: 1px solid rgba(42,149,200,0.3);
+  border-top: none; border-radius: 0 0 6px 6px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+}
+.algo-ac-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 5px 8px; cursor: pointer; font-size: 11px;
+  border-bottom: 1px solid rgba(250,247,240,0.03);
+}
+.algo-ac-item:hover { background: var(--forest-700); }
+.algo-ac-label { color: var(--cream-100); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.algo-ac-type { color: var(--cream-600); font-size: 10px; margin-left: 8px; flex-shrink: 0; }
+.algo-ac-empty { padding: 6px 8px; font-size: 10px; color: var(--cream-600); text-align: center; }
+.algo-node-preview {
+  font-size: 10px; color: var(--morpho-400); margin-top: 2px;
+  display: flex; align-items: center; gap: 4px;
+}
+.algo-node-clear {
+  cursor: pointer; color: var(--cream-500); font-weight: bold; font-size: 12px;
+  margin-left: auto; padding: 0 2px;
+}
+.algo-node-clear:hover { color: var(--dart-400); }
 .algo-load-more {
   padding: 4px 0; text-align: center; color: var(--morpho-500);
   cursor: pointer; font-size: 10px; font-weight: 500;
@@ -417,6 +459,48 @@ body {
   0% { transform: scale(1); filter: drop-shadow(0 0 8px rgba(42,149,200,0.9)) brightness(1.6); }
   100% { transform: scale(1.25); filter: drop-shadow(0 0 16px rgba(42,149,200,1)) brightness(2.0); }
 }
+
+/* ─── Help tooltips ─── */
+.help-icon {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(250,247,240,0.06);
+  color: var(--cream-600);
+  font-size: 9px; font-weight: 700; line-height: 1;
+  cursor: help; flex-shrink: 0;
+  transition: all 0.15s;
+  font-family: 'HK Grotesk Pro', system-ui, sans-serif;
+  vertical-align: middle;
+}
+.help-icon:hover { background: var(--morpho-deep); color: var(--morpho-300); }
+#help-tooltip {
+  display: none; position: fixed; width: 280px;
+  background: rgba(11,43,26,0.97); backdrop-filter: blur(12px);
+  border: 1px solid rgba(42,149,200,0.25); border-radius: 10px;
+  padding: 12px 14px; font-size: 11px; color: var(--cream-200);
+  line-height: 1.55; z-index: 500;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,0,0,0.2);
+  font-family: 'HK Grotesk Pro', system-ui, sans-serif; font-weight: 400;
+  pointer-events: auto;
+}
+#help-tooltip .help-tip-title { font-weight: 700; color: var(--morpho-300); font-size: 12px; margin-bottom: 6px; }
+#help-tooltip .help-tip-body { color: var(--cream-200); margin-bottom: 8px; }
+#help-tooltip .help-tip-body code {
+  background: rgba(250,247,240,0.06); padding: 1px 4px; border-radius: 3px;
+  font-family: ui-monospace, 'SF Mono', monospace; font-size: 10px; color: var(--morpho-glow);
+}
+#help-tooltip .help-tip-body em { color: var(--cream-300); font-style: italic; }
+#help-tooltip .help-tip-body strong { color: var(--cream-50); font-weight: 600; }
+#help-tooltip .help-tip-links {
+  display: flex; flex-wrap: wrap; gap: 6px 10px;
+  border-top: 1px solid rgba(250,247,240,0.08); padding-top: 8px;
+}
+#help-tooltip .help-tip-links a {
+  color: var(--morpho-400); text-decoration: none;
+  font-size: 10px; font-weight: 500; transition: color 0.15s;
+}
+#help-tooltip .help-tip-links a:hover { color: var(--morpho-glow); text-decoration: underline; }
+.footer-sep { color: var(--forest-300); opacity: 0.3; font-size: 10px; }
 </style>
 </head>
 <body>
@@ -426,7 +510,7 @@ body {
       <h1>DGRAPH VIEWER</h1>
       <div id="query-area">
         <div class="addr-row">
-          <label>Dgraph</label>
+          <label>Dgraph <span class="help-icon" data-help-key="dql" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
           <input id="dgraph-addr" type="text" value="" placeholder="http://localhost:28080" />
         </div>
         <textarea id="query-input" placeholder="Enter DQL query... e.g.&#10;{&#10;  all(func: has(dgraph.type), first: 50) {&#10;    uid&#10;    expand(_all_) {&#10;      uid&#10;      expand(_all_)&#10;    }&#10;  }&#10;}" spellcheck="false"></textarea>
@@ -445,8 +529,9 @@ body {
             <div class="toggle-knob active-3d"></div>
           </div>
           <span class="toggle-label active" id="toggle-label-3d">3D</span>
+          <span class="help-icon" data-help-key="mode2d3d" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span>
           <div class="depth-control">
-            <label>Depth</label>
+            <label>Depth <span class="help-icon" data-help-key="depth" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
             <div class="depth-stepper">
               <button class="depth-step" onclick="stepDepth(-1)"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
               <input id="glow-depth" type="number" min="1" max="20" value="5" />
@@ -455,16 +540,16 @@ body {
           </div>
         </div>
         <div class="option-row">
-          <label class="option"><input type="checkbox" id="opt-shapes" checked onchange="toggleShapes()" /> Shapes</label>
-          <label class="option"><input type="checkbox" id="opt-scale" checked onchange="toggleScale()" /> Scale</label>
-          <label class="option"><input type="checkbox" id="opt-focus" onchange="toggleFocusMode()" /> Focus</label>
+          <label class="option"><input type="checkbox" id="opt-shapes" checked onchange="toggleShapes()" /> Shapes <span class="help-icon" data-help-key="shapes" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
+          <label class="option"><input type="checkbox" id="opt-scale" checked onchange="toggleScale()" /> Scale <span class="help-icon" data-help-key="scale" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
+          <label class="option"><input type="checkbox" id="opt-focus" onchange="toggleFocusMode()" /> Focus <span class="help-icon" data-help-key="focus" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
         </div>
       </div>
     </div>
     <div id="status">Ready</div>
     <div id="algo-panel" class="collapsed">
       <div class="algo-header" onclick="this.parentElement.classList.toggle('collapsed')">
-        <h3>Query Builder</h3>
+        <h3>Query Builder <span class="help-icon" data-help-key="queryBuilder" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></h3>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="algo-body">
@@ -513,11 +598,274 @@ body {
       <a href="https://corewood.io/" target="_blank" rel="noopener">
         <img src="img/corewood_symbol_avatar_green.png" alt="Corewood" style="height:16px;vertical-align:middle;margin-right:4px;">corewood.io
       </a>
+      <span class="footer-sep">&middot;</span>
+      <a href="https://www.verdantintel.com/" target="_blank" rel="noopener">verdantintel.com</a>
     </div>
   </div>
 </div>
 <svg id="modal-connections"><defs><marker id="conn-arrow" viewBox="0 0 10 6" refX="10" refY="3" markerWidth="10" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,3 L0,6" fill="var(--morpho-400)"/></marker></defs></svg>
 <div id="node-modals"></div>
+
+<div id="help-tooltip" onmouseenter="keepHelp()" onmouseleave="scheduleHideHelp()"></div>
+<script>
+// ── Help System ─────────────────────────────────────────────────────────
+var HELP_TEXT = {
+  dql: {
+    title: 'DQL \u2014 Dgraph Query Language',
+    text: 'A graph query language for traversing and filtering Dgraph databases. Write queries using functions like <code>has()</code>, <code>eq()</code>, and <code>expand(_all_)</code> to explore connected data. Results are rendered as interactive node-link graphs.',
+    links: [
+      {label: 'DQL Reference', url: 'https://dgraph.io/docs/query-language/'},
+      {label: 'Graph databases (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Graph_database'}
+    ]
+  },
+  depth: {
+    title: 'Highlight Depth (BFS)',
+    text: 'Controls how many hops the breadth-first search highlight reaches when hovering a node. At depth 1, only direct neighbors glow. Higher values reveal more distant connections with fading intensity across each rank.',
+    links: [
+      {label: 'Breadth-first search (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Breadth-first_search'},
+      {label: 'Graph traversal (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Graph_traversal'}
+    ]
+  },
+  shapes: {
+    title: 'Node Shapes by Type',
+    text: 'Each <code>dgraph.type</code> is assigned a distinct platonic solid: icosahedron, octahedron, dodecahedron, tetrahedron, cube, or sphere. This provides instant visual grouping \u2014 you can identify node types at a glance even in dense graphs.',
+    links: [
+      {label: 'Platonic solids (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Platonic_solid'},
+      {label: 'Graph drawing (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Graph_drawing'}
+    ]
+  },
+  scale: {
+    title: 'Degree-Based Sizing',
+    text: 'Scales node radius logarithmically with connection count (degree). Hub nodes with many connections appear larger, making them easy to spot. This is a visual encoding of <em>degree centrality</em> \u2014 the simplest measure of node importance.',
+    links: [
+      {label: 'Degree (graph theory)', url: 'https://en.wikipedia.org/wiki/Degree_(graph_theory)'},
+      {label: 'Centrality (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Centrality#Degree_centrality'}
+    ]
+  },
+  focus: {
+    title: 'Focus Mode',
+    text: 'When active, clicking a node isolates its neighborhood \u2014 only the selected node, its neighbors, and edges between them remain visible. Non-connected nodes fade out. Equivalent to extracting a 1-hop <em>ego graph</em> on click.',
+    links: [
+      {label: 'Personal/ego network (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Personal_network'}
+    ]
+  },
+  mode2d3d: {
+    title: '2D / 3D Rendering Modes',
+    text: '<strong>3D mode</strong> uses Three.js with a custom octree-based n-body force simulation and Cesium-style camera controls (orbit, pan, tilt, free-look).<br><br><strong>2D mode</strong> uses D3.js with an SVG force-directed layout. Graph state is preserved when switching between modes.',
+    links: [
+      {label: 'Force-directed graph drawing (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Force-directed_graph_drawing'},
+      {label: 'Three.js', url: 'https://threejs.org/'},
+      {label: 'D3.js', url: 'https://d3js.org/'}
+    ]
+  },
+  queryBuilder: {
+    title: 'Graph Algorithm Query Builder',
+    text: 'Run graph algorithms and visualize results as color gradients, colored communities, highlighted paths, or scalar metrics.<br><br><strong>Local vs. Dgraph execution:</strong><br>Most algorithms run <em>client-side</em> on the nodes and edges currently loaded in the viewer. This means results reflect only your loaded subgraph, not the entire database. Load more data (expand nodes, run broader DQL queries) to get more complete results.<br><br>Some algorithms (Shortest Path, Ego Network) offer a <strong>Use DQL</strong> checkbox that sends the query to Dgraph instead. This searches the full database and loads new nodes/edges into the viewer \u2014 useful when the answer requires traversals beyond the current subgraph.<br><br>When <strong>Focus mode</strong> is active, local algorithms run on only the focused neighborhood, not the entire loaded graph.',
+    links: [
+      {label: 'Graph theory (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Graph_theory'},
+      {label: 'Network science (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Network_science'},
+      {label: 'NetworkX algorithms', url: 'https://networkx.org/documentation/stable/reference/algorithms/index.html'}
+    ]
+  },
+  cat_centrality: {
+    title: 'Centrality Algorithms',
+    text: 'Centrality answers: <em>which nodes are the most important?</em> Each measure defines importance differently \u2014 direct connections (degree), control of information flow (betweenness), accessibility (closeness), recursive influence (PageRank), or hub/authority roles (HITS).',
+    links: [
+      {label: 'Centrality (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Centrality'},
+      {label: 'NetworkX centrality', url: 'https://networkx.org/documentation/stable/reference/algorithms/centrality.html'}
+    ]
+  },
+  cat_community: {
+    title: 'Community Detection',
+    text: 'Community detection finds clusters of densely connected nodes \u2014 groups with more internal connections than external ones. Reveals natural groupings like research subfields, social circles, or functional modules.',
+    links: [
+      {label: 'Community structure (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Community_structure'},
+      {label: 'NetworkX communities', url: 'https://networkx.org/documentation/stable/reference/algorithms/community.html'}
+    ]
+  },
+  cat_structure: {
+    title: 'Structural Analysis',
+    text: 'Structural algorithms reveal the backbone and topology of the network. K-core decomposition peels away peripheral nodes to find the dense core. Connected components identify isolated subnetworks and measure fragmentation.',
+    links: [
+      {label: 'Degeneracy / k-core (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Degeneracy_(graph_theory)'},
+      {label: 'Component (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Component_(graph_theory)'}
+    ]
+  },
+  cat_path: {
+    title: 'Path & Distance Algorithms',
+    text: 'Path algorithms find routes between nodes, extract local neighborhoods, and discover bridge concepts. Shortest paths reveal how entities relate; ego networks show local context; multi-topic distance finds structural bridges between fields.',
+    links: [
+      {label: 'Shortest path problem (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Shortest_path_problem'},
+      {label: 'NetworkX shortest paths', url: 'https://networkx.org/documentation/stable/reference/algorithms/shortest_paths.html'}
+    ]
+  },
+  cat_metric: {
+    title: 'Network Metrics',
+    text: 'Scalar metrics that summarize overall network properties in a single number. Useful for comparing networks or tracking how a network changes over time.',
+    links: [
+      {label: 'Dense graph (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Dense_graph'},
+      {label: 'Graph property (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Graph_property'}
+    ]
+  },
+  algo_degree: {
+    title: 'Degree Centrality',
+    text: 'The simplest centrality: counts direct connections normalized by graph size. <code>C(v) = deg(v) / (n\u22121)</code>. A node connected to many others scores high.<br><br><strong>No parameters.</strong> Runs on the currently loaded subgraph. Results depend on which nodes are loaded \u2014 a node\u2019s score changes as you expand or clear the graph. Use Focus mode to run on just one node\u2019s neighborhood.<br><br><strong>When to use:</strong> Quick first-pass to identify major connectors. O(n) \u2014 scales to any network size. Limitations: treats all connections equally; 100 unimportant neighbors beats 5 critical hubs.',
+    links: [
+      {label: 'Degree centrality (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Centrality#Degree_centrality'},
+      {label: 'NetworkX degree_centrality', url: 'https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.degree_centrality.html'}
+    ]
+  },
+  algo_betweenness: {
+    title: 'Betweenness Centrality',
+    text: 'Measures how often a node lies on shortest paths between other pairs. High-betweenness nodes are bridges and gatekeepers that control information flow between communities.<br><br><strong>No parameters.</strong> Computed over all pairs of nodes in the loaded subgraph. Since it requires all-pairs shortest paths, computation grows as O(n\u00b7m) \u2014 graphs over ~1000 nodes may take several seconds. Use Focus mode to scope the computation to a smaller neighborhood.<br><br><strong>When to use:</strong> Finding network bottlenecks, critical infrastructure nodes, or vulnerability points.',
+    links: [
+      {label: 'Betweenness centrality (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Betweenness_centrality'},
+      {label: 'NetworkX betweenness_centrality', url: 'https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.betweenness_centrality.html'}
+    ]
+  },
+  algo_closeness: {
+    title: 'Closeness Centrality',
+    text: 'Measures how close a node is to all others on average. <code>C(v) = (n\u22121) / \u03a3d(v,u)</code>. Nodes at the topological center reach everyone in fewer hops.<br><br><strong>No parameters.</strong> Runs BFS from every node, so performance is similar to betweenness \u2014 O(n\u00b7(n+m)). Works best on connected graphs; disconnected nodes receive a score of 0. The score represents <em>reachable</em> closeness: how many nodes are reachable, divided by total distance to them.<br><br><strong>When to use:</strong> Finding the most efficient information spreader, optimal facility placement, or the most accessible node in a network.',
+    links: [
+      {label: 'Closeness centrality (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Closeness_centrality'},
+      {label: 'NetworkX closeness_centrality', url: 'https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.centrality.closeness_centrality.html'}
+    ]
+  },
+  algo_pagerank: {
+    title: 'PageRank',
+    text: 'Recursive importance \u2014 links from important nodes count more. Developed by Google to rank web pages. A "random surfer" follows links with probability equal to the damping factor, or jumps to a random node otherwise.<br><br><strong>Parameters:</strong><br>\u2022 <strong>Damping</strong> (0.1\u20131.0, default 0.85) \u2014 probability of following a link vs. teleporting to a random node. Higher values (0.9+) make the algorithm follow link structure more closely, amplifying hub dominance. Lower values (0.5\u20130.7) flatten scores toward uniform, making peripheral nodes more visible. The classic value 0.85 balances both.<br>\u2022 <strong>Iterations</strong> (1\u2013100, default 30) \u2014 number of convergence rounds. 20\u201330 is sufficient for most graphs. Increase for very large or poorly connected graphs where convergence is slow; decrease for a quick approximation.<br><br><strong>When to use:</strong> The go-to centrality for large networks. Scales to 50K+ nodes. Use when betweenness/closeness are too slow, or when recursive influence matters.',
+    links: [
+      {label: 'PageRank (Wikipedia)', url: 'https://en.wikipedia.org/wiki/PageRank'},
+      {label: 'Original paper (Brin & Page, 1998)', url: 'http://infolab.stanford.edu/~backrub/google.html'},
+      {label: 'NetworkX pagerank', url: 'https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.link_analysis.pagerank_alg.pagerank.html'}
+    ]
+  },
+  algo_hits: {
+    title: 'HITS (Hubs & Authorities)',
+    text: 'Decomposes importance into two roles: <strong>Hubs</strong> point to many good authorities; <strong>Authorities</strong> are pointed to by many good hubs. Scores are mutually reinforcing and converge via iterative computation.<br><br><strong>Parameters:</strong><br>\u2022 <strong>Metric</strong> (Authorities / Hubs) \u2014 which score to visualize. <em>Authorities</em> highlights nodes that are referenced by many important hubs (e.g., seminal papers, original sources). <em>Hubs</em> highlights nodes that link out to many important authorities (e.g., review articles, curators, aggregators). Switch between them to see both sides of the network\u2019s structure.<br>\u2022 <strong>Iterations</strong> (1\u2013100, default 20) \u2014 number of convergence rounds. Hub and authority scores update alternately each round. 20 is usually sufficient; increase if scores haven\u2019t stabilized on very large graphs.<br><br><strong>When to use:</strong> Directed networks where roles differ \u2014 review papers vs. seminal papers, curators vs. content creators, aggregators vs. original sources.',
+    links: [
+      {label: 'HITS algorithm (Wikipedia)', url: 'https://en.wikipedia.org/wiki/HITS_algorithm'},
+      {label: 'NetworkX hits', url: 'https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.link_analysis.hits_alg.hits.html'}
+    ]
+  },
+  algo_labelProp: {
+    title: 'Label Propagation',
+    text: 'Each node adopts the most frequent label among its neighbors, iterating until stable. Fast, near-linear community detection.<br><br><strong>Parameters:</strong><br>\u2022 <strong>Iterations</strong> (1\u2013100, default 20) \u2014 maximum number of label-update passes. Each pass shuffles nodes randomly and updates their labels to match their neighbors\u2019 majority. Low values (3\u20135) give a rough partition quickly; higher values let communities refine and stabilize. The algorithm stops early if no labels change, so setting this higher than needed has minimal cost.<br><br><strong>When to use:</strong> Discovering natural groupings in any network. Good for quick exploration. <strong>Note:</strong> Non-deterministic \u2014 results may vary between runs due to random node processing order. Run multiple times and compare for robustness.',
+    links: [
+      {label: 'Label propagation (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Label_propagation_algorithm'},
+      {label: 'Community detection (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Community_structure'},
+      {label: 'NetworkX label propagation', url: 'https://networkx.org/documentation/stable/reference/algorithms/community.html'}
+    ]
+  },
+  algo_kcore: {
+    title: 'K-Core Decomposition',
+    text: 'Extracts the maximal subgraph where every node has at least <strong>k</strong> connections within the subgraph. The "peeling" algorithm iteratively removes nodes with degree &lt; k until stable.<br><br><strong>Parameters:</strong><br>\u2022 <strong>K value</strong> (1\u201350, default 2) \u2014 the minimum degree threshold. Each level strips away more of the periphery:<br>&nbsp;&nbsp;<code>k=1</code> \u2014 keeps all nodes with at least one connection (removes isolates only).<br>&nbsp;&nbsp;<code>k=2</code> \u2014 removes leaf nodes and pendant chains, leaving the 2-connected backbone.<br>&nbsp;&nbsp;<code>k=3\u20135</code> \u2014 reveals moderately dense core groups.<br>&nbsp;&nbsp;<code>k=10+</code> \u2014 only the tightest clusters survive. If the result is empty, lower k.<br>Try incrementing k from 2 upward to watch the network peel down to its densest core.<br><br><strong>When to use:</strong> Finding the dense backbone, cleaning noisy periphery, identifying tightly-knit core groups. Deterministic and fast.',
+    links: [
+      {label: 'K-core / Degeneracy (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Degeneracy_(graph_theory)'},
+      {label: 'NetworkX k_core', url: 'https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.core.k_core.html'}
+    ]
+  },
+  algo_components: {
+    title: 'Connected Components',
+    text: 'Identifies groups of nodes that can reach each other through paths. Each component is an island \u2014 no edges connect different components. The largest connected component (LCC) is the main body of the network.<br><br><strong>No parameters.</strong> Components are colored distinctly so you can visually identify isolated clusters. The result lists components sorted by size (largest first). If you see many small components, the graph may have disconnected regions \u2014 try loading more data or using a broader query.<br><br><strong>When to use:</strong> Understanding fragmentation, measuring the impact of node/edge removal, identifying isolated subnetworks, or preprocessing before algorithms that require connectivity.',
+    links: [
+      {label: 'Connected component (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Component_(graph_theory)'},
+      {label: 'NetworkX connected_components', url: 'https://networkx.org/documentation/stable/reference/algorithms/generated/networkx.algorithms.components.connected_components.html'}
+    ]
+  },
+  algo_shortest: {
+    title: 'Shortest Path (BFS)',
+    text: 'Finds the minimum-hop route between two nodes via breadth-first search.<br><br><strong>Parameters:</strong><br>\u2022 <strong>Source Node</strong> \u2014 the starting node. Click a node in the graph to fill this, or type/search by name, type, or UID in the input field.<br>\u2022 <strong>Target Node</strong> \u2014 the destination node. Same selection methods as source.<br>\u2022 <strong>Use DQL</strong> (checkbox) \u2014 when enabled, sends a <code>shortest</code> query to Dgraph instead of running BFS on the local graph. This discovers paths through nodes not yet loaded, and may load new nodes/edges into the view. Use this when the source and target aren\u2019t visibly connected in the current subgraph.<br><br><strong>When to use:</strong> Understanding how two entities are related, finding degrees of separation, tracing connection paths.',
+    links: [
+      {label: 'Shortest path (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Shortest_path_problem'},
+      {label: 'BFS (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Breadth-first_search'},
+      {label: 'Dgraph shortest path', url: 'https://dgraph.io/docs/query-language/shortest-path/'}
+    ]
+  },
+  algo_ego: {
+    title: 'Ego Network',
+    text: 'Extracts the local neighborhood around a center node within a given radius. Reveals the community structure around an entity and how its connections relate to each other.<br><br><strong>Parameters:</strong><br>\u2022 <strong>Center Node</strong> \u2014 the "ego" to build the neighborhood around. Click a node in the graph or type/search by name, type, or UID.<br>\u2022 <strong>Radius</strong> (1\u201310, default 2) \u2014 how many hops outward to include. <code>radius=1</code> shows only direct neighbors. <code>radius=2</code> adds neighbors-of-neighbors, which often reveals bridge connections and subcommunities. Higher radii grow exponentially \u2014 <code>radius=3+</code> can return very large subgraphs on well-connected nodes.<br>\u2022 <strong>Use DQL</strong> (checkbox) \u2014 when enabled, queries Dgraph to expand the ego network beyond the currently loaded graph. Useful when the center node\u2019s full neighborhood isn\u2019t loaded yet. New nodes and edges are added to the view.<br><br><strong>When to use:</strong> Exploring one entity\u2019s local world, understanding influence, or reducing a large graph to a meaningful slice.',
+    links: [
+      {label: 'Personal/ego network (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Personal_network'},
+      {label: 'NetworkX ego_graph', url: 'https://networkx.org/documentation/stable/reference/generated/networkx.generators.ego.ego_graph.html'}
+    ]
+  },
+  algo_multiTopic: {
+    title: 'Multi-Topic Distance',
+    text: 'Finds bridge nodes equidistant from multiple seed nodes. Computes BFS distances from each seed, then averages them. Nodes with low mean distance are structural bridges connecting the seed topics.<br><br><strong>Parameters:</strong><br>\u2022 <strong>Seed Nodes</strong> (multi-select, min 2) \u2014 the topic anchors to measure distance from. Click nodes in the graph to add them as chips, or type/search by name. Each seed represents a topic or domain; the algorithm finds what connects them. More seeds narrow the results to nodes central to all topics simultaneously.<br>\u2022 <strong>Max Distance</strong> (1\u201350, default 10) \u2014 the average-distance cutoff. Only nodes whose mean distance to all seeds is \u2264 this value are included. Lower values (2\u20134) return a tight cluster of bridge nodes closest to all seeds. Higher values (10+) cast a wider net, showing more of the surrounding context. Start low and increase if the result set is too small.<br><br><strong>When to use:</strong> Discovering concepts at the intersection of fields, finding cross-domain connectors, exploring what structurally links two distant topics.',
+    links: [
+      {label: 'Shortest path (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Shortest_path_problem'},
+      {label: 'Network science (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Network_science'},
+      {label: 'Interdisciplinarity (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Interdisciplinarity'}
+    ]
+  },
+  algo_density: {
+    title: 'Network Density',
+    text: 'Ratio of actual edges to maximum possible: <code>2|E| / (|V|\u00b7(|V|\u22121))</code>. Ranges from 0 (no edges) to 1 (complete graph). Real-world networks are typically sparse (density &lt; 0.1). Dense subgraphs indicate tightly-knit communities.<br><br><strong>No parameters.</strong> Returns a single scalar value for the loaded subgraph. When Focus mode is active, computes density for just the focused neighborhood \u2014 useful for comparing density across different ego networks.<br><br><strong>When to use:</strong> Summarizing overall network connectivity, comparing subgraph structures, or evaluating community cohesion.',
+    links: [
+      {label: 'Dense graph (Wikipedia)', url: 'https://en.wikipedia.org/wiki/Dense_graph'},
+      {label: 'NetworkX density', url: 'https://networkx.org/documentation/stable/reference/generated/networkx.classes.function.density.html'}
+    ]
+  }
+};
+
+var _helpHideTimer = null;
+
+function showHelp(iconEl) {
+  if (_helpHideTimer) { clearTimeout(_helpHideTimer); _helpHideTimer = null; }
+  var key = iconEl.getAttribute('data-help-key');
+  var data = HELP_TEXT[key];
+  if (!data) return;
+  var tip = document.getElementById('help-tooltip');
+  if (!tip) return;
+
+  var html = '<div class="help-tip-title">' + data.title + '</div>';
+  html += '<div class="help-tip-body">' + data.text + '</div>';
+  if (data.links && data.links.length) {
+    html += '<div class="help-tip-links">';
+    data.links.forEach(function(l) {
+      html += '<a href="' + l.url + '" target="_blank" rel="noopener">' + l.label + ' \u2197</a>';
+    });
+    html += '</div>';
+  }
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+
+  var rect = iconEl.getBoundingClientRect();
+  var tipW = 280, tipH = tip.offsetHeight;
+  var top = rect.top - tipH - 8;
+  var left = rect.left + rect.width / 2 - tipW / 2;
+
+  if (top < 8) top = rect.bottom + 8;
+  if (left < 8) left = 8;
+  if (left + tipW > window.innerWidth - 8) left = window.innerWidth - tipW - 8;
+  if (top + tipH > window.innerHeight - 8) top = window.innerHeight - tipH - 8;
+
+  tip.style.top = top + 'px';
+  tip.style.left = left + 'px';
+}
+
+function scheduleHideHelp() {
+  _helpHideTimer = setTimeout(function() {
+    var tip = document.getElementById('help-tooltip');
+    if (tip) tip.style.display = 'none';
+  }, 300);
+}
+
+function keepHelp() {
+  if (_helpHideTimer) { clearTimeout(_helpHideTimer); _helpHideTimer = null; }
+}
+
+function createHelpIcon(key) {
+  var span = document.createElement('span');
+  span.className = 'help-icon';
+  span.setAttribute('data-help-key', key);
+  span.textContent = '?';
+  span.addEventListener('mouseenter', function() { showHelp(this); });
+  span.addEventListener('mouseleave', function() { scheduleHideHelp(); });
+  return span;
+}
+</script>
 
 <script src="js/force3d.js"></script>
 <script src="js/state.js"></script>

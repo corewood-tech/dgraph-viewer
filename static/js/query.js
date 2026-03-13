@@ -89,6 +89,8 @@ function clearSchema() {
 }
 
 // ── DQL Algorithm Queries ───────────────────────────────────────────
+var _lastDQLRootUids = null;
+
 function runDQLAlgorithm(dql, callback) {
   setStatus('Running DQL algorithm...');
   fetch('/api/query', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({query: dql})})
@@ -99,13 +101,14 @@ function runDQLAlgorithm(dql, callback) {
     .then(function(data) {
       if (data.errors) { setStatus('DQL Error: ' + data.errors.map(function(e){return e.message}).join('; ')); return; }
       var ingested = new Set();
+      var rootUids = new Set();
       if (data.data) {
         for (var k in data.data) {
           var arr = data.data[k];
           if (Array.isArray(arr)) {
             arr.forEach(function(obj) {
               ingestNode(obj);
-              if (obj.uid) ingested.add(obj.uid);
+              if (obj.uid) { ingested.add(obj.uid); rootUids.add(obj.uid); }
               // Also collect nested UIDs
               for (var prop in obj) {
                 if (prop === 'uid' || prop === 'dgraph.type') continue;
@@ -117,6 +120,7 @@ function runDQLAlgorithm(dql, callback) {
           }
         }
       }
+      _lastDQLRootUids = rootUids;
       renderGraph();
       setStatus('DQL algorithm returned ' + ingested.size + ' nodes');
       if (callback) callback(ingested);
@@ -124,20 +128,63 @@ function runDQLAlgorithm(dql, callback) {
     .catch(function(e) { setStatus('DQL Error: ' + e.message); });
 }
 
+function fetchUidPredicates(callback) {
+  fetch('/api/schema')
+    .then(function(resp) { return resp.json(); })
+    .then(function(data) {
+      var preds = [];
+      if (data.data && data.data.schema) {
+        data.data.schema.forEach(function(s) {
+          if (s.type === 'uid') preds.push({predicate: s.predicate, reverse: !!s.reverse});
+        });
+      }
+      callback(preds);
+    })
+    .catch(function() { callback([]); });
+}
+
 function runDQLShortestPath(sourceUid, targetUid) {
-  var dql = '{\n  path as shortest(from: ' + sourceUid + ', to: ' + targetUid + ') {\n    expand(_all_)\n  }\n  path(func: uid(path)) {\n    uid\n    dgraph.type\n    expand(_all_) {\n      uid\n      dgraph.type\n      expand(_all_)\n    }\n  }\n}';
-  runDQLAlgorithm(dql, function(uids) {
-    if (uids.size === 0) {
-      showAlgoResult('No path found via DQL');
+  setStatus('Fetching schema for shortest path...');
+  fetchUidPredicates(function(preds) {
+    if (preds.length === 0) {
+      showAlgoResult('No uid predicates found in schema');
       return;
     }
-    var pathSet = uids;
-    var scores = new Map();
-    var idx = 0;
-    uids.forEach(function(uid) { scores.set(uid, idx++); });
-    highlightQuery = {scores: scores, nodeSet: pathSet, mode: 'path', label: 'DQL Shortest Path (' + uids.size + ' nodes)'};
-    applyHighlightQuery();
-    showAlgoResultSummary(highlightQuery);
+    // Include forward predicates + reverse (~pred) for predicates with @reverse
+    var lines = [];
+    preds.forEach(function(p) {
+      lines.push('    ' + p.predicate);
+      if (p.reverse) lines.push('    ~' + p.predicate);
+    });
+    var predLines = lines.join('\n');
+    var dql = '{\n  path as shortest(from: ' + sourceUid + ', to: ' + targetUid + ') {\n' + predLines + '\n  }\n  path(func: uid(path)) {\n    uid\n    dgraph.type\n  }\n}';
+    setStatus('Running DQL shortest path...');
+    fetch('/api/query', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({query: dql})})
+      .then(function(resp) {
+        if (!resp.ok) return resp.text().then(function(t) { throw new Error(t); });
+        return resp.json();
+      })
+      .then(function(data) {
+        if (data.errors) { showAlgoResult('DQL Error: ' + data.errors.map(function(e){return e.message}).join('; ')); return; }
+        var pathUids = [];
+        if (data.data && data.data.path && Array.isArray(data.data.path)) {
+          data.data.path.forEach(function(obj) {
+            if (obj.uid) pathUids.push(obj.uid);
+          });
+        }
+        if (pathUids.length === 0) {
+          showAlgoResult('No path found via DQL');
+          return;
+        }
+        var pathSet = new Set(pathUids);
+        var scores = new Map();
+        pathUids.forEach(function(uid, idx) { scores.set(uid, idx); });
+        highlightQuery = {scores: scores, nodeSet: pathSet, mode: 'path', label: 'DQL Shortest Path (' + pathUids.length + ' nodes)'};
+        applyHighlightQuery();
+        showAlgoResultSummary(highlightQuery);
+        setStatus('DQL shortest path: ' + pathUids.length + ' nodes');
+      })
+      .catch(function(e) { showAlgoResult('DQL Error: ' + e.message); });
   });
 }
 
