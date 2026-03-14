@@ -1,5 +1,7 @@
 # Dgraph Viewer
 
+> **Note:** This project is open source and will remain so, but additional development (including WebGPU for much greater throughput) will occur on a separate, private repository. Your contributions are appreciated. To use the licensed version of the 3D graph viewer, reach out: **hello@corewood.io**
+
 A lightweight, browser-based graph explorer for [Dgraph](https://dgraph.io) databases. Inspired by the Neo4j browser, built as a single Go binary with zero dependencies.
 
 <p align="center">
