@@ -65,8 +65,10 @@ function clearHighlight() {
 }
 
 function applyHighlightColors() {
+  var hasFocus = focusMode && focusRanks;
   // Node mesh colors
   nodeMeshes.forEach(function(mesh, uid) {
+    if (hasFocus && !focusRanks.has(uid)) return; // respect focus visibility
     var n = graphNodes.get(uid); if (!n) return;
     var base = typeColor(n.type || 'unknown');
     mesh.material = getMaterial(base, base);
@@ -75,20 +77,40 @@ function applyHighlightColors() {
   // Label visibility
   nodeLabels.forEach(function(sprite, uid) {
     var n = graphNodes.get(uid); if (!n) return;
-    sprite.visible = n._hlRank !== undefined && n._hlRank >= 0 && n._hlRank <= 3;
-    if (sprite.visible) sprite.material.opacity = Math.max(0.3, 1 - n._hlRank * 0.2);
+    if (hasFocus && !focusRanks.has(uid)) { sprite.visible = false; return; }
+    var focusVisible = hasFocus && focusRanks.get(uid) <= 3;
+    var hlVisible = n._hlRank !== undefined && n._hlRank >= 0 && n._hlRank <= 3;
+    sprite.visible = hlVisible || focusVisible;
+    if (sprite.visible) {
+      var rank = hlVisible ? n._hlRank : focusRanks.get(uid);
+      sprite.material.opacity = Math.max(0.3, 1 - rank * 0.2);
+    }
   });
   // Link colors
   if (linkColorAttr && linkMesh) {
     var colors = linkColorAttr.array;
     for (var i = 0; i < graphLinks.length; i++) {
       var l = graphLinks[i];
+      var sid = l.source.uid || l.source, tid = l.target.uid || l.target;
       var src = typeof l.source === 'object' ? l.source : graphNodes.get(l.source);
       var base = src ? typeColor(src.type || 'unknown') : '#0F3B24';
       var hex;
-      if (l._hlRank === undefined) hex = base;
-      else if (l._hlRank < 0) hex = '#1a1e24';
-      else hex = adjustBrightness(base, Math.max(1.0, 2.5 - l._hlRank * 0.3));
+      // If focus mode is active, links outside the focus subgraph stay black
+      if (hasFocus && (!focusRanks.has(sid) || !focusRanks.has(tid))) {
+        hex = '#000000';
+      } else if (l._hlRank === undefined) {
+        // No hover highlight active — use focus dimming if applicable, otherwise base
+        if (hasFocus) {
+          var edgeRank = Math.max(focusRanks.get(sid), focusRanks.get(tid));
+          hex = adjustBrightness(base, Math.max(1.0, 2.5 - edgeRank * 0.3));
+        } else {
+          hex = base;
+        }
+      } else if (l._hlRank < 0) {
+        hex = '#1a1e24';
+      } else {
+        hex = adjustBrightness(base, Math.max(1.0, 2.5 - l._hlRank * 0.3));
+      }
       var rgb = hexToRgb(hex);
       var idx = i * 6;
       colors[idx] = colors[idx+3] = rgb[0]/255;
@@ -97,16 +119,18 @@ function applyHighlightColors() {
     }
     linkColorAttr.needsUpdate = true;
   }
-  // Link labels: highlight + active node
+  // Link labels: highlight + active node, respecting focus
   var activeUid = activeNode ? activeNode.uid : null;
   for (var j = 0; j < linkLabelSprites.length; j++) {
     var obj = linkLabelSprites[j];
     var ll = graphLinks[obj.linkIdx];
     if (!ll) { obj.sprite.visible = false; continue; }
     var sid = ll.source.uid || ll.source, tid = ll.target.uid || ll.target;
+    if (hasFocus && (!focusRanks.has(sid) || !focusRanks.has(tid))) { obj.sprite.visible = false; continue; }
     var hlVisible = ll._hlRank !== undefined && ll._hlRank >= 0 && ll._hlRank <= 3;
     var activeVisible = activeUid && (sid === activeUid || tid === activeUid);
-    obj.sprite.visible = hlVisible || activeVisible;
+    var focusLabelVisible = hasFocus && focusRanks.has(sid) && focusRanks.has(tid) && Math.max(focusRanks.get(sid), focusRanks.get(tid)) <= 3;
+    obj.sprite.visible = hlVisible || activeVisible || focusLabelVisible;
   }
   // Re-apply algorithm highlight overlay so it isn't overwritten by hover BFS
   if (highlightQuery) applyHighlightQuery();

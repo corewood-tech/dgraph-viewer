@@ -48,19 +48,20 @@ document.addEventListener('keydown', function(e) {
     e.preventDefault();
     var dir = e.key === 'ArrowRight' ? 1 : -1;
     selectedNode.fx = (selectedNode.fx != null ? selectedNode.fx : (selectedNode.x || 0)) + dir * step;
-    if (viewMode === '3d') simulation.alpha(0.3).restart();
+    if (viewMode === '3d') { if (simulation.fixNode) simulation.fixNode(selectedNode); simulation.alpha(0.3).restart(); }
     else if (sim2d) sim2d.alpha(0.3).restart();
   } else if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
     e.preventDefault();
     if (viewMode !== '3d') return;
     var dir = e.key === 'ArrowUp' ? -1 : 1;
     selectedNode.fz = (selectedNode.fz != null ? selectedNode.fz : (selectedNode.z || 0)) + dir * step;
+    if (simulation.fixNode) simulation.fixNode(selectedNode);
     simulation.alpha(0.3).restart();
   } else if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
     e.preventDefault();
     var dir = e.key === 'ArrowUp' ? 1 : -1;
     selectedNode.fy = (selectedNode.fy != null ? selectedNode.fy : (selectedNode.y || 0)) + dir * step;
-    if (viewMode === '3d') simulation.alpha(0.3).restart();
+    if (viewMode === '3d') { if (simulation.fixNode) simulation.fixNode(selectedNode); simulation.alpha(0.3).restart(); }
     else if (sim2d) sim2d.alpha(0.3).restart();
   }
 });

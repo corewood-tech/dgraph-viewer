@@ -341,7 +341,7 @@ document.getElementById('glow-depth').addEventListener('change', function() {
 
 // ── 3D teardown ─────────────────────────────────────────────────────
 function teardown3D() {
-  if (simulation) simulation.stop();
+  if (simulation) { simulation.stop(); simulation.terminate(); }
   if (renderer) {
     renderer.domElement.remove();
     renderer.dispose();
@@ -412,13 +412,12 @@ function initGraph() {
     '<tr><td>Shift + &uarr; / &darr;</td><td>Move selected on Z axis</td></tr>' +
     '</table>';
 
-  simulation = Force3D.forceSimulation([])
-    .force('link', Force3D.forceLink([]).id(function(d) { return d.uid; }).distance(80).strength(0.3))
-    .force('charge', Force3D.forceManyBody().strength(-200).distanceMax(500))
-    .force('center', Force3D.forceCenter(0, 0, 0))
-    .force('collide', Force3D.forceCollide(8))
-    .on('tick', onSimTick);
-  simulation.stop();
+  simulation = new SimulationProxy('js/force3d-worker.js', {
+    linkDistance: 80, linkStrength: 0.3,
+    chargeStrength: -200, chargeDistanceMax: 500,
+    collideRadius: 8
+  });
+  simulation.on('tick', onSimTick);
 
   var rcThrottle = 0;
   renderer.domElement.addEventListener('mousemove', function(e) {

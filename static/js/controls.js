@@ -45,6 +45,7 @@ function CesiumControls(cam, el) {
             raycaster.ray.intersectPlane(dragPlane, intersection);
             dragOffset.subVectors(nodePos, intersection);
             draggedNode.fx = draggedNode.x; draggedNode.fy = draggedNode.y; draggedNode.fz = draggedNode.z;
+            if (simulation && simulation.fixNode) simulation.fixNode(draggedNode);
             dragCluster = getClusterNeighbors(uid, 2);
             dragCluster.forEach(function(entry) {
               var n = entry.node;
@@ -100,6 +101,7 @@ function CesiumControls(cam, el) {
         if (raycaster.ray.intersectPlane(dragPlane, intersection)) {
           intersection.add(dragOffset);
           draggedNode.fx = intersection.x; draggedNode.fy = intersection.y; draggedNode.fz = intersection.z;
+          if (simulation && simulation.fixNode) simulation.fixNode(draggedNode);
           if (dragCluster && dragAnchor) {
             var ddx = intersection.x - dragAnchor.x, ddy = intersection.y - dragAnchor.y, ddz = intersection.z - dragAnchor.z;
             dragCluster.forEach(function(entry) {
@@ -108,6 +110,7 @@ function CesiumControls(cam, el) {
               n.fy = n._dragAnchorY + ddy * s;
               n.fz = n._dragAnchorZ + ddz * s;
             });
+            if (simulation && simulation.fixNodes) simulation.fixNodes(dragCluster);
           }
         }
       }
@@ -133,12 +136,14 @@ function CesiumControls(cam, el) {
   window.addEventListener('mouseup', function(e) {
     if (self._mode === 'nodedrag' && draggedNode) {
       draggedNode.fx = null; draggedNode.fy = null; draggedNode.fz = null;
+      if (simulation && simulation.fixNode) simulation.fixNode(draggedNode);
       if (dragCluster) {
         dragCluster.forEach(function(entry) {
           var n = entry.node;
           n.fx = null; n.fy = null; n.fz = null;
           delete n._dragAnchorX; delete n._dragAnchorY; delete n._dragAnchorZ;
         });
+        if (simulation && simulation.fixNodes) simulation.fixNodes(dragCluster);
         dragCluster = null; dragAnchor = null;
       }
       if (simulation) simulation.alphaTarget(0);

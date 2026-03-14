@@ -536,4 +536,4 @@ global.Force3D = {
   forceZ: forceAxis('z'),
   octree: octree
 };
-})(window, d3);
+})(typeof self !== 'undefined' ? self : this, typeof d3 !== 'undefined' ? d3 : {});
