@@ -541,6 +541,7 @@ body {
   vertical-align: middle;
 }
 .help-icon:hover { background: var(--morpho-deep); color: var(--morpho-300); }
+.help-icon.loading { cursor: wait; }
 #help-tooltip {
   display: none; position: fixed; width: 280px;
   background: rgba(11,43,26,0.97); backdrop-filter: blur(12px);
@@ -616,7 +617,7 @@ body {
       <h1>DGRAPH VIEWER</h1>
       <div id="query-area">
         <div class="addr-row">
-          <label>Dgraph <span class="help-icon" data-help-key="dql" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
+          <label>Dgraph <span class="help-icon" data-help-key="dql" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span></label>
           <input id="dgraph-addr" type="text" value="" placeholder="http://localhost:28080" />
         </div>
         <div class="btn-row">
@@ -634,9 +635,9 @@ body {
             <div class="toggle-knob active-3d"></div>
           </div>
           <span class="toggle-label active" id="toggle-label-3d">3D</span>
-          <span class="help-icon" data-help-key="mode2d3d" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span>
+          <span class="help-icon" data-help-key="mode2d3d" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span>
           <div class="depth-control">
-            <label>Depth <span class="help-icon" data-help-key="depth" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
+            <label>Depth <span class="help-icon" data-help-key="depth" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span></label>
             <div class="depth-stepper">
               <button class="depth-step" onclick="stepDepth(-1)"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></button>
               <input id="glow-depth" type="number" min="1" max="20" value="5" />
@@ -645,12 +646,12 @@ body {
           </div>
         </div>
         <div class="option-row">
-          <label class="option"><input type="checkbox" id="opt-shapes" checked onchange="toggleShapes()" /> Shapes <span class="help-icon" data-help-key="shapes" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
-          <label class="option"><input type="checkbox" id="opt-scale" checked onchange="toggleScale()" /> Scale <span class="help-icon" data-help-key="scale" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
-          <label class="option"><input type="checkbox" id="opt-focus" onchange="toggleFocusMode()" /> Focus <span class="help-icon" data-help-key="focus" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
+          <label class="option"><input type="checkbox" id="opt-shapes" checked onchange="toggleShapes()" /> Shapes <span class="help-icon" data-help-key="shapes" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span></label>
+          <label class="option"><input type="checkbox" id="opt-scale" checked onchange="toggleScale()" /> Scale <span class="help-icon" data-help-key="scale" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span></label>
+          <label class="option"><input type="checkbox" id="opt-focus" onchange="toggleFocusMode()" /> Focus <span class="help-icon" data-help-key="focus" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span></label>
         </div>
         <div class="autorefresh-row">
-          <label class="option"><input type="checkbox" id="opt-autorefresh" onchange="toggleAutoRefresh()" /> Auto <span class="help-icon" data-help-key="autorefresh" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></label>
+          <label class="option"><input type="checkbox" id="opt-autorefresh" onchange="toggleAutoRefresh()" /> Auto <span class="help-icon" data-help-key="autorefresh" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span></label>
           <div class="autorefresh-interval">
             <label>Interval</label>
             <div class="autorefresh-stepper">
@@ -667,7 +668,7 @@ body {
     <div id="status">Ready</div>
     <div id="algo-panel" class="collapsed">
       <div class="algo-header" onclick="this.parentElement.classList.toggle('collapsed')">
-        <h3>Query Builder <span class="help-icon" data-help-key="queryBuilder" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()">?</span></h3>
+        <h3>Query Builder <span class="help-icon" data-help-key="queryBuilder" onmouseenter="showHelp(this)" onmouseleave="scheduleHideHelp()" onclick="event.stopPropagation();clickHelp(this)">?</span></h3>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
       <div class="algo-body">
@@ -953,14 +954,16 @@ var HELP_TEXT = {
 };
 
 var _helpHideTimer = null;
+var _helpShowTimer = null;
+var _helpActiveIcon = null;
 
-function showHelp(iconEl) {
-  if (_helpHideTimer) { clearTimeout(_helpHideTimer); _helpHideTimer = null; }
+function _renderHelp(iconEl) {
   var key = iconEl.getAttribute('data-help-key');
   var data = HELP_TEXT[key];
   if (!data) return;
   var tip = document.getElementById('help-tooltip');
   if (!tip) return;
+  iconEl.classList.remove('loading');
 
   var html = '<div class="help-tip-title">' + data.title + '</div>';
   html += '<div class="help-tip-body">' + data.text + '</div>';
@@ -988,15 +991,45 @@ function showHelp(iconEl) {
   tip.style.left = left + 'px';
 }
 
+function showHelp(iconEl) {
+  if (_helpHideTimer) { clearTimeout(_helpHideTimer); _helpHideTimer = null; }
+  if (_helpShowTimer) { clearTimeout(_helpShowTimer); _helpShowTimer = null; }
+  if (_helpActiveIcon && _helpActiveIcon !== iconEl) _helpActiveIcon.classList.remove('loading');
+  _helpActiveIcon = iconEl;
+  iconEl.classList.add('loading');
+  _helpShowTimer = setTimeout(function() {
+    _helpShowTimer = null;
+    if (_helpActiveIcon !== iconEl) return;
+    _renderHelp(iconEl);
+  }, 150);
+}
+
+function clickHelp(iconEl) {
+  if (_helpShowTimer) { clearTimeout(_helpShowTimer); _helpShowTimer = null; }
+  if (_helpHideTimer) { clearTimeout(_helpHideTimer); _helpHideTimer = null; }
+  if (_helpActiveIcon && _helpActiveIcon !== iconEl) _helpActiveIcon.classList.remove('loading');
+  _helpActiveIcon = iconEl;
+  iconEl.classList.remove('loading');
+  var tip = document.getElementById('help-tooltip');
+  if (tip && tip.style.display === 'block' && tip._sourceIcon === iconEl) {
+    tip.style.display = 'none'; tip._sourceIcon = null; return;
+  }
+  _renderHelp(iconEl);
+  if (tip) tip._sourceIcon = iconEl;
+}
+
 function scheduleHideHelp() {
+  if (_helpShowTimer) { clearTimeout(_helpShowTimer); _helpShowTimer = null; }
+  if (_helpActiveIcon) { _helpActiveIcon.classList.remove('loading'); _helpActiveIcon = null; }
   _helpHideTimer = setTimeout(function() {
     var tip = document.getElementById('help-tooltip');
-    if (tip) tip.style.display = 'none';
-  }, 300);
+    if (tip) { tip.style.display = 'none'; tip._sourceIcon = null; }
+  }, 200);
 }
 
 function keepHelp() {
   if (_helpHideTimer) { clearTimeout(_helpHideTimer); _helpHideTimer = null; }
+  if (_helpShowTimer) { clearTimeout(_helpShowTimer); _helpShowTimer = null; }
 }
 
 function createHelpIcon(key) {
@@ -1006,6 +1039,7 @@ function createHelpIcon(key) {
   span.textContent = '?';
   span.addEventListener('mouseenter', function() { showHelp(this); });
   span.addEventListener('mouseleave', function() { scheduleHideHelp(); });
+  span.addEventListener('click', function(e) { e.stopPropagation(); clickHelp(this); });
   return span;
 }
 </script>
